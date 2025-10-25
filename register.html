@@ -20,22 +20,28 @@
       </nav>
     </header>
 
-    <main class="site-content" style="max-width:520px;margin:24px auto;background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.06)">
-      <div style="padding:20px">
-        <h2 style="margin-top:0">Create account</h2>
+    <main class="site-content card card--narrow">
+      <div class="card-body">
+        <h2>Create account</h2>
         <form id="registerForm">
-          <label style="display:block;margin-bottom:8px">Full name
-            <input id="regName" type="text" required style="width:100%;padding:8px;margin-top:6px" />
-          </label>
-          <label style="display:block;margin-bottom:8px">Email
-            <input id="regEmail" type="email" required style="width:100%;padding:8px;margin-top:6px" />
-          </label>
-          <label style="display:block;margin-bottom:8px">Password
-            <input id="regPass" type="password" required style="width:100%;padding:8px;margin-top:6px" />
-          </label>
-          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <div class="form-group">
+            <label for="regName" class="label-block">Full name</label>
+            <input id="regName" type="text" required class="fullwidth-input" />
+          </div>
+
+          <div class="form-group">
+            <label for="regEmail" class="label-block">Email</label>
+            <input id="regEmail" type="email" required class="fullwidth-input" />
+          </div>
+
+          <div class="form-group">
+            <label for="regPass" class="label-block">Password</label>
+            <input id="regPass" type="password" required class="fullwidth-input" />
+          </div>
+
+          <div class="form-actions">
             <button type="submit" class="btn btn-primary">Register</button>
-            <a href="login.html" class="btn btn-secondary" style="display:inline-block;padding:10px 14px;text-decoration:none">Back to login</a>
+            <a href="login.html" class="btn btn-secondary">Back to login</a>
           </div>
         </form>
       </div>
