@@ -1,0 +1,88 @@
+:root{
+  --bg:#ffffff;
+  --surface:#ffffff;
+  --muted:#6b7280;
+  --accent:#0ea5a4;
+  --primary:#0369a1;
+  --radius:14px;
+  --shadow: 0 6px 18px rgba(3,7,18,0.06);
+  font-size:16px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+body{background:#f3f4f6; color:#0f172a; -webkit-font-smoothing:antialiased}
+
+.chat-app{max-width:900px;margin:36px auto;background:var(--bg);border-radius:18px;padding:0;box-shadow:var(--shadow);overflow:hidden}
+.chat-header{padding:18px 20px;border-bottom:1px solid #eef2f7;background:linear-gradient(180deg, #ffffff, #fbfdff)}
+.chat-header h1{font-size:18px;margin:0;font-weight:600;color:#052e46}
+
+/* Sticky header and topnav */
+.chat-header{position:sticky;top:0;z-index:60;backdrop-filter:saturate(120%) blur(6px);box-shadow:0 6px 18px rgba(3,7,18,0.06)}
+.chat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{width:36px;height:36px}
+.app-title{font-size:18px;margin:0;color:#052e46;font-weight:700}
+.topnav{display:flex;gap:12px;align-items:center}
+.topnav .nav-link{color:#075985;text-decoration:none;padding:8px 10px;border-radius:8px;font-weight:600}
+.topnav .nav-link:hover{background:rgba(3,105,161,0.06)}
+.topnav .nav-link:visited{color:#075985}
+.topnav .nav-link.active{background:linear-gradient(90deg,#e6f6ff,#eef9ff);color:#003647}
+.topnav .auth-link{margin-left:8px;padding:6px 10px;background:#f1f5f9;border-radius:8px}
+
+/* Accessible focus ring (avoid default purple) */
+.topnav .nav-link:focus{outline:none}
+.topnav .nav-link:focus-visible{box-shadow:0 0 0 3px rgba(3,105,161,0.12);border-radius:8px}
+
+
+.chat-interface{height:520px;overflow:auto;padding:24px;background:var(--surface)}
+.messages{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
+
+/* Empty state shown before any conversation */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;color:#0f172a;opacity:0.95}
+.empty-state .empty-icon{width:96px;height:96px;margin-bottom:18px}
+.empty-state .empty-text h3{margin:0 0 8px;font-size:20px;color:#052e46}
+.empty-state .empty-text p{margin:0;color:var(--muted);max-width:680px}
+
+.message{max-width:72%;padding:12px 14px;border-radius:12px;background:#f8fafc;color:#072A3B;box-shadow:0 1px 0 rgba(12,24,36,0.02)}
+.message.system{max-width:90%;background:transparent;color:var(--muted);font-size:13px}
+.message.user{margin-left:auto;background:linear-gradient(90deg,#eef6ff,#e6f2ff);color:#022c55}
+.message.ai{margin-right:auto;background:#fff7ed;color:#3b2b00;border:1px solid #fff0d9}
+.meta{font-size:12px;color:var(--muted);margin-top:6px}
+
+.composer{padding:16px;border-top:1px solid #e6eef6;background:#fff}
+.message-form{display:flex;flex-direction:column;gap:10px}
+.controls{display:flex;gap:10px;align-items:center}
+select#toneSelect{padding:10px 12px;border-radius:10px;border:1px solid #e6eef6;background:#fff;color:#052e46}
+input#messageInput{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #e6eef6}
+
+.actions{display:flex;gap:8px;justify-content:flex-end}
+.btn{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:#f1f5f9;color:#062a3b;border:1px solid #e6eef6}
+
+.ai-response{margin-top:10px;padding:12px;border-radius:12px;border:1px solid #e6eef6;background:#fff}
+.ai-response textarea{width:100%;height:84px;border-radius:8px;border:1px solid #e6eef6;padding:10px;resize:vertical}
+.ai-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.hidden{display:none}
+.visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+/* Ensure there's comfortable spacing under the sticky header on all pages */
+.site-content{margin-top:14px;padding:28px}
+
+/* Conversations list styling */
+.conversations-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
+.conversations-list li{background:#fff;padding:22px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.04);max-width:100%;word-break:break-word}
+
+/* Profile section spacing */
+.profile{padding:18px;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(2,6,23,0.04);max-width:100%}
+
+/* Dashboard page spacing */
+.dashboard{padding:24px;background:transparent}
+.dashboard h2{margin-top:0;margin-bottom:12px}
+
+/* Slightly increase gap between header and chat interface */
+.chat-app .chat-interface{margin-top:8px}
+
+/* small screens */
+@media (max-width:520px){.chat-app{margin:16px;border-radius:12px}.chat-interface{height:420px;padding:16px}.message{max-width:86%}}

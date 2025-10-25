@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI powered Chatapp</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+    <header class="chat-header">
+        <div class="header-left">
+            <img src="./icons/chat-icon.svg" alt="App icon" class="logo" />
+            <h1 class="app-title">AI powered Chatapp</h1>
+        </div>
+        <nav class="topnav">
+            <a href="#/chat" class="nav-link">Chat</a>
+            <a href="#/dashboard" class="nav-link">Dashboard</a>
+            <a href="#/profile" class="nav-link">Profile</a>
+            <a href="/login.html" class="nav-link auth-link">Login</a>
+        </nav>
+    </header>
+
+    <div class="chat-app">
+
+        <div id="view-chat">
+            <div class="chat-interface" id="chatInterface" aria-live="polite">
+                <ul class="messages" id="messages"></ul>
+
+                <div id="emptyState" class="empty-state">
+                    <img src="./icons/chat-icon.svg" alt="Chat icon" class="empty-icon"/>
+                    <div class="empty-text">
+                        <h3>Welcome to AI powered Chat</h3>
+                        <p>Type a message below to start a conversation. Use the <strong>Polish</strong> button to rewrite your text in the selected tone (professional, educational, romantic).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- composer is only shown inside the Chat view -->
+            <section class="composer">
+                <form id="messageForm" class="message-form" autocomplete="off">
+                    <div class="controls">
+                        <select id="toneSelect" name="tone" aria-label="Select tone">
+                            <option value="professional" selected>Professional</option>
+                            <option value="educational">Educational</option>
+                            <option value="romantic">Romantic</option>
+                        </select>
+
+                        <input id="messageInput" type="text" placeholder="Type a message..." required aria-label="Message input" />
+                    </div>
+
+                    <div class="actions">
+                        <button id="polishBtn" type="button" class="btn btn-secondary">Polish</button>
+                        <button id="sendBtn" type="submit" class="btn btn-primary">Send</button>
+                    </div>
+                </form>
+
+                <div id="aiResponseArea" class="ai-response hidden" aria-live="polite">
+                    <label for="aiResponse" class="visually-hidden">AI suggested response</label>
+                    <textarea id="aiResponse" readonly></textarea>
+                    <div class="ai-actions">
+                        <button id="sendAiBtn" class="btn btn-primary">Send AI Response</button>
+                        <button id="discardAiBtn" class="btn btn-secondary">Discard</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-dashboard" class="hidden">
+            <section class="dashboard">
+                <h2>Your Conversations</h2>
+                <ul id="conversationsList" class="conversations-list"></ul>
+            </section>
+        </div>
+
+        <div id="view-profile" class="hidden">
+            <section class="profile">
+                <h2>Profile & Settings</h2>
+                <label>Default tone
+                    <select id="profileToneSelect">
+                        <option value="professional">Professional</option>
+                        <option value="educational">Educational</option>
+                        <option value="romantic">Romantic</option>
+                    </select>
+                </label>
+            </section>
+        </div>
+
+        <!-- composer removed from global scope; placed inside Chat view -->
+    </div>
+
+    <script src="./auth-client.js"></script>
+    <script src="./api-client.js"></script>
+    <script src="./app.js"></script>
+    <script>
+        // Check authentication on page load
+        window.addEventListener('load', () => {
+            if (!authClient.isAuthenticated()) {
+                window.location.replace('./login.html');
+                return;
+            }
+
+            // Update auth link
+            const authLink = document.querySelector('.auth-link');
+            if (authLink) {
+                authLink.textContent = 'Sign Out';
+                authLink.href = '#';
+                authLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    authClient.logout();
+                });
+            }
+
+            // Get user data
+            const user = authClient.getUser();
+            if (user && user.isAdmin) {
+                // Add admin-specific UI elements here if needed
+                console.log('Admin user logged in');
+            }
+        });
+    </script>
+</body>
+</html>

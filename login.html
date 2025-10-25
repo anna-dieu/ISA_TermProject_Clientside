@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - AI Chat App</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 24px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .form-group label {
+            font-weight: 500;
+            color: #1e293b;
+        }
+        .form-group input {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .auth-button {
+            background: #0369a1;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .auth-button:hover {
+            background: #075985;
+        }
+        .auth-footer {
+            text-align: center;
+            margin-top: 16px;
+            color: #64748b;
+        }
+        .auth-footer a {
+            color: #0369a1;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        .error-message {
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .usage-info {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 6px;
+            display: none;
+        }
+        .usage-info h3 {
+            margin: 0 0 8px;
+            color: #0f172a;
+            font-size: 16px;
+        }
+        .usage-info p {
+            margin: 0;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <header class="chat-header">
+        <div class="header-left">
+            <img src="./icons/chat-icon.svg" alt="App icon" class="logo" />
+            <h1 class="app-title">AI powered Chatapp</h1>
+        </div>
+        <nav class="topnav">
+            <a href="/signup.html" class="nav-link">Sign Up</a>
+        </nav>
+    </header>
+
+    <main class="auth-container">
+        <div class="auth-header">
+            <h2>Login to Your Account</h2>
+            <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 6px; font-size: 14px; color: #0369a1;">
+                <strong>Demo Accounts:</strong><br>
+                Admin: admin@admin.com / 111<br>
+                User: john@john.com / 123
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message">
+            Invalid email or password
+        </div>
+
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    required 
+                    autocomplete="email"
+                    placeholder="Enter your email"
+                />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                />
+            </div>
+
+            <button type="submit" class="auth-button">Login</button>
+        </form>
+
+        <div id="usageInfo" class="usage-info">
+            <h3>API Usage</h3>
+            <p>You have used <span id="apiCalls">0</span> out of 20 free API calls.</p>
+        </div>
+
+        <div class="auth-footer">
+            Don't have an account? <a href="/signup.html">Sign up</a>
+        </div>
+    </main>
+
+    <script src="./auth-client.js"></script>
+    <script>
+        // Initialize auth client and handle form submission
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const usageInfo = document.getElementById('usageInfo');
+        const apiCallsSpan = document.getElementById('apiCalls');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await authClient.login(email, password);
+                console.log('Login response:', response); // Debug log
+                
+                if (response.success) {
+                    console.log('Login successful, redirecting...'); // Debug log
+                    
+                    // Disable form while redirecting
+                    loginForm.querySelectorAll('input, button').forEach(el => el.disabled = true);
+                    
+                    // Add a slight delay to ensure token is saved
+                    setTimeout(() => {
+                        // For admin, redirect to admin dashboard
+                        if (email === 'admin@admin.com') {
+                            window.location.href = './index.html#/dashboard';
+                        } else {
+                            // For regular users, redirect to chat
+                            window.location.href = './index.html#/chat';
+                        }
+                    }, 100);
+                } else {
+                    console.log('Login failed:', response.message); // Debug log
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = response.message || 'Invalid email or password';
+                }
+            } catch (error) {
+                console.error('Login error:', error); // Debug log
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = 'An error occurred. Please try again.';
+            }
+        });
+
+        // Check if user is already logged in
+        window.addEventListener('load', async () => {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                try {
+                    const usage = await authClient.getApiUsage();
+                    if (usage.success) {
+                        usageInfo.style.display = 'block';
+                        apiCallsSpan.textContent = usage.calls;
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch API usage:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

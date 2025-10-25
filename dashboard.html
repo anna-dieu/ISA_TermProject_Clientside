@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dashboard - AI Chat</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="chat-header">
+      <div class="header-left">
+        <img src="./icons/icon.svg" alt="App icon" class="logo" />
+        <h1 class="app-title">AI powered Chatapp</h1>
+      </div>
+      <nav class="topnav">
+        <a href="./index.html#/chat" class="nav-link">Chat</a>
+        <a href="./index.html#/dashboard" class="nav-link">Dashboard</a>
+        <a href="./index.html#/profile" class="nav-link">Profile</a>
+        <a href="/login.html" class="nav-link auth-link">Login</a>
+      </nav>
+    </header>
+
+    <main class="site-content" style="max-width:1000px;margin:36px auto">
+      <div style="padding:20px">
+        <h2 style="margin-top:0">Conversations (Dashboard)</h2>
+        <div id="convArea">
+          <ul id="conversationsList" class="conversations-list"></ul>
+        </div>
+      </div>
+    </main>
+
+    <script src="./api-client.js"></script>
+    <script>
+      // route-guard for standalone dashboard
+      if(!localStorage.getItem('auth_token')){
+        window.location.href = '/login.html';
+      }
+      // auth-aware nav
+      const navAuth = document.querySelector('.auth-link');
+      if(navAuth){
+        if(localStorage.getItem('auth_token')){
+          navAuth.textContent = 'Sign out';
+          navAuth.href = 'javascript:void(0)';
+          navAuth.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('auth_token'); window.location.href = '/login.html'; });
+        } else {
+          navAuth.textContent = 'Login';
+          navAuth.href = '/login.html';
+        }
+      }
+      (async ()=>{
+        const api = new APIClient('');
+        const list = await api.listConversations();
+        const ul = document.getElementById('conversationsList');
+        list.forEach(c=>{
+          const li = document.createElement('li');
+          li.className = 'message system';
+          li.innerHTML = `<strong>${c.title}</strong><div class='meta'>${c.last} · ${c.updated}</div>`;
+          ul.appendChild(li);
+        });
+      })();
+    </script>
+  </body>
+</html>
