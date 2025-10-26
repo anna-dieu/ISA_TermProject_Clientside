@@ -3,8 +3,9 @@
  */
 class AuthClient {
     constructor() {
-        // Update this with your actual API endpoint
-        this.baseUrl = 'http://localhost:3000/api';
+        // Base API URL. Can be overridden by adding a small config.js that sets window.APP_CONFIG.API_BASE
+        // Example config.js: window.APP_CONFIG = { API_BASE: 'http://localhost:5000' }
+        this.baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5000';
         this.storagePrefix = 'ai_chat_';
         // keep a legacy key for compatibility with other pages
         this.legacyTokenKey = 'auth_token';
