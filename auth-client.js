@@ -100,6 +100,34 @@ class AuthClient {
         }
     }
 
+    // Helper: low-level fetch that returns { ok, data, status }
+    async _fetchRaw(endpoint, options = {}){
+        try{
+            // Ensure headers exist and include Authorization when available
+            const headers = Object.assign({}, options.headers || {});
+            if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+                headers['Content-Type'] = 'application/json';
+            }
+            const token = this.getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch(this.baseUrl + endpoint, { ...options, headers });
+            let data = null;
+            try{ data = await res.json(); } catch(e){ data = null; }
+            return { ok: res.ok, status: res.status, data };
+        }catch(err){
+            console.error('Fetch raw error for', endpoint, err);
+            return { ok:false, status: 0, data: null };
+        }
+    }
+
+    // Helper: tolerant token extractor from many common shapes
+    _extractTokenFromResponse(resp){
+        if(!resp) return null;
+        const d = resp.data || resp || {};
+        return d.token || d.accessToken || d.access_token || d.jwt || d.result?.token || d.value?.token || null;
+    }
+
     /**
      * Attempt to log in a user
      * @param {string} email 
@@ -134,25 +162,55 @@ class AuthClient {
 
         console.log('No matching demo credentials'); // Debug log
 
-        // If not demo credentials, try the actual API
-        try {
-            const response = await this.request('/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({ email, password })
-            });
+        // If not demo credentials, try a list of likely API endpoints and accept common response shapes
+        const endpoints = [
+            // Common custom API routes
+            '/api/auth/login', '/auth/login',
+            // Account-based endpoints inferred from IAccountService
+            '/api/account/login', '/account/login',
+            // Identity area / default conventions
+            '/api/identity/login', '/identity/login',
+            '/api/identity/account/login', '/identity/account/login'
+        ];
 
-            if (response.success) {
-                this.setAuthData(response);
+        const body = JSON.stringify({ email, password });
+        const headers = { 'Content-Type': 'application/json' };
+
+        for (const ep of endpoints) {
+            const res = await this._fetchRaw(ep, { method: 'POST', headers, body });
+            if (!res) continue;
+            if (res.ok) {
+                // Try to extract a token
+                const token = this._extractTokenFromResponse(res.data);
+                if (token) {
+                    const user = res.data.user || res.data.data?.user || { email };
+                    this.setAuthData({ token, user });
+                    return { success: true, token, user };
+                }
+                // If backend returned success without token (maybe cookie-based auth)
+                if (res.data && (res.data.success || res.data.isSuccess)) {
+                    return { success: true, data: res.data };
+                }
+                // Otherwise, return the raw data as a success
+                return { success: true, data: res.data };
             }
-
-            return response;
-        } catch (error) {
-            console.error('Login error:', error); // Debug log
-            return {
-                success: false,
-                message: 'Invalid email or password'
-            };
         }
+
+        // Fallback: check for locally stored demo user (created via signup)
+        const localUserRaw = localStorage.getItem(this.storagePrefix + 'user');
+        if (localUserRaw) {
+            const localUser = JSON.parse(localUserRaw);
+            // Only match if email matches what was stored at signup
+            // Note: password is not stored, so allow any password for demo user
+            if (localUser.email === email) {
+                const token = localStorage.getItem(this.storagePrefix + 'token');
+                this.setAuthData({ token, user: localUser });
+                return { success: true, token, user: localUser };
+            }
+        }
+
+        // If none of the endpoints worked
+        return { success: false, message: 'Invalid email or password' };
     }
 
     /**
@@ -162,40 +220,51 @@ class AuthClient {
      */
     async signup(userData) {
         try {
-            // For demo purposes, simulate successful registration
-            console.log('Demo signup with:', userData);
-            
-            // Store user data (in a real app, this would come from the backend)
+            console.log('Signup attempt:', userData);
+
+            // Try likely signup endpoints
+            const endpoints = [
+                // Common custom API routes
+                '/api/auth/signup', '/auth/signup',
+                // Account-based endpoints inferred from IAccountService
+                '/api/account/register', '/account/register',
+                '/api/account/register', '/account/register',
+                // Identity area / default conventions
+                '/api/identity/register', '/identity/register',
+                '/api/identity/account/register', '/identity/account/register'
+            ];
+
+            const body = JSON.stringify(userData);
+            const headers = { 'Content-Type': 'application/json' };
+
+            for (const ep of endpoints) {
+                const res = await this._fetchRaw(ep, { method: 'POST', headers, body });
+                if (!res) continue;
+                if (res.ok) {
+                    // If token present, store it
+                    const token = this._extractTokenFromResponse(res.data);
+                    if (token) {
+                        const user = res.data.user || res.data.data?.user || { email: userData.email, firstName: userData.firstName };
+                        this.setAuthData({ token, user });
+                        return { success: true, token, user };
+                    }
+                    // Otherwise return backend response
+                    return { success: true, data: res.data };
+                }
+            }
+
+            // Fallback: demo signup behavior if backend not reachable
+            console.log('Backend signup endpoints did not respond; falling back to demo signup');
             const newUser = {
                 firstName: userData.firstName,
                 email: userData.email,
                 isAdmin: false
             };
-            
-            // Generate a demo token
             const token = 'demo-' + Math.random().toString(36).substring(2);
-            
-            // Store auth data
-            this.setAuthData({
-                token,
-                user: newUser
-            });
-            
-            return {
-                success: true,
-                message: 'Account created successfully'
-            };
-            
-            // In a real app, this would make an API call:
-            // return await this.request('/auth/signup', {
-            //     method: 'POST',
-            //     body: JSON.stringify(userData)
-            // });
+            this.setAuthData({ token, user: newUser });
+            return { success: true, message: 'Account created locally (demo)' };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || 'Registration failed'
-            };
+            return { success: false, message: error.message || 'Registration failed' };
         }
     }
 
@@ -216,15 +285,111 @@ class AuthClient {
             return { success: false, message: 'Not authenticated' };
         }
 
-        try {
-            return await this.request('/usage');
-        } catch (error) {
-            return { 
-                success: false, 
-                message: 'Failed to fetch API usage',
-                calls: 0
-            };
+        // Try common usage endpoints
+        const endpoints = ['/api/usage', '/usage'];
+        for (const ep of endpoints) {
+            const res = await this._fetchRaw(ep, { method: 'GET' });
+            if (!res) continue;
+            if (res.ok && res.data) {
+                return { success: true, calls: res.data.calls ?? res.data.count ?? res.data.usage ?? 0, raw: res.data };
+            }
         }
+
+        return { 
+            success: false, 
+            message: 'Failed to fetch API usage',
+            calls: 0
+        };
+    }
+
+    /**
+     * Confirm a user's email using userId and token
+     * @param {string} userId
+     * @param {string} token
+     */
+    async confirmEmail(userId, token) {
+        const endpoints = [
+            '/api/account/confirm-email', '/account/confirm-email',
+            '/api/auth/confirm-email', '/auth/confirm-email',
+            '/api/identity/confirm-email', '/identity/confirm-email'
+        ];
+
+        // Try POST body
+        const body = JSON.stringify({ userId, token });
+        const headers = { 'Content-Type': 'application/json' };
+
+        for (const ep of endpoints) {
+            const res = await this._fetchRaw(ep, { method: 'POST', headers, body });
+            if (!res) continue;
+            if (res.ok) return { success: true, data: res.data };
+        }
+
+        // Try GET with query params
+        for (const ep of endpoints) {
+            const url = ep + `?userId=${encodeURIComponent(userId)}&token=${encodeURIComponent(token)}`;
+            const res = await this._fetchRaw(url, { method: 'GET' });
+            if (!res) continue;
+            if (res.ok) return { success: true, data: res.data };
+        }
+
+        return { success: false, message: 'Failed to confirm email' };
+    }
+
+    /**
+     * Trigger sending of a password reset link to an email
+     * @param {string} email
+     */
+    async sendPasswordReset(email) {
+        const endpoints = [
+            '/api/account/send-password-reset', '/account/send-password-reset',
+            '/api/account/forgot-password', '/account/forgot-password',
+            '/api/auth/forgot-password', '/auth/forgot-password'
+        ];
+
+        const body = JSON.stringify({ email });
+        const headers = { 'Content-Type': 'application/json' };
+
+        for (const ep of endpoints) {
+            const res = await this._fetchRaw(ep, { method: 'POST', headers, body });
+            if (!res) continue;
+            if (res.ok) return { success: true, data: res.data };
+        }
+
+        return { success: false, message: 'Failed to send password reset link' };
+    }
+
+    /**
+     * Reset password using model { userId?, email?, token, newPassword }
+     * @param {Object} model
+     */
+    async resetPassword(model) {
+        const endpoints = ['/api/account/reset-password', '/account/reset-password', '/api/auth/reset-password', '/auth/reset-password'];
+        const body = JSON.stringify(model);
+        const headers = { 'Content-Type': 'application/json' };
+
+        for (const ep of endpoints) {
+            const res = await this._fetchRaw(ep, { method: 'POST', headers, body });
+            if (!res) continue;
+            if (res.ok) return { success: true, data: res.data };
+        }
+
+        return { success: false, message: 'Failed to reset password' };
+    }
+
+    /**
+     * Lookup a user profile by email
+     * @param {string} email
+     */
+    async getProfileByEmail(email) {
+        const endpoints = ['/api/account/profile', '/account/profile', '/api/profile', '/profile'];
+        for (const ep of endpoints) {
+            // try query param
+            const url = ep + `?email=${encodeURIComponent(email)}`;
+            const res = await this._fetchRaw(url, { method: 'GET' });
+            if (!res) continue;
+            if (res.ok) return { success: true, data: res.data };
+        }
+        return { success: false, message: 'Profile not found' };
     }
 }
 

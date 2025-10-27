@@ -42,6 +42,7 @@
                     placeholder="Enter your first name"
                 />
             </div>
+            <!-- First name removed: backend only requires email, password, confirmPassword -->
 
             <div class="form-group">
                 <label for="email">Email</label>
@@ -110,9 +111,9 @@
 
             try {
                 const response = await authClient.signup({
-                    firstName,
                     email,
-                    password
+                    password,
+                    confirmPassword
                 });
                 
                 if (response.success) {

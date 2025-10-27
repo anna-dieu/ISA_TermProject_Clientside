@@ -85,6 +85,11 @@
                     <button id="saveToneBtn" class="btn btn-primary" style="margin-left:12px;padding:8px 10px;">Save</button>
                     <span id="saveToneMsg" style="margin-left:10px;color:#059669;display:none">Saved</span>
                 </label>
+
+                 <div class="form-actions" style="margin-top:24px;">
+                     <button id="resetPasswordBtn" type="button" class="btn btn-link">Reset password</button>
+                     <span id="resetPasswordMsg" class="success-message" style="display:none"></span>
+                 </div>
             </section>
         </div>
 
@@ -95,6 +100,45 @@
     <script src="./auth-client.js"></script>
     <script src="./api-client.js"></script>
     <script src="./app.js"></script>
+    <script>
+        // Reset password logic for profile view
+        document.addEventListener('DOMContentLoaded', function() {
+            const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+            const resetPasswordMsg = document.getElementById('resetPasswordMsg');
+            if (resetPasswordBtn) {
+                resetPasswordBtn.addEventListener('click', async () => {
+                    // Prompt for email, new password, confirm password, and token
+                    const email = prompt('Enter your email:');
+                    if (!email) return;
+                    const password = prompt('Enter new password:');
+                    if (!password) return;
+                    const confirmPassword = prompt('Confirm new password:');
+                    if (!confirmPassword || confirmPassword !== password) {
+                        alert('Passwords do not match.');
+                        return;
+                    }
+                    const token = prompt('Enter the password reset token (from your email):');
+                    if (!token) return;
+                    resetPasswordBtn.disabled = true;
+                    resetPasswordMsg.style.display = 'none';
+                    try {
+                        const resp = await authClient.resetPassword({ email, password, confirmPassword, token });
+                        if (resp.success) {
+                            resetPasswordMsg.textContent = 'Password reset successful!';
+                            resetPasswordMsg.style.display = 'inline-block';
+                        } else {
+                            resetPasswordMsg.textContent = resp.message || 'Failed to reset password.';
+                            resetPasswordMsg.style.display = 'inline-block';
+                        }
+                    } catch (err) {
+                        resetPasswordMsg.textContent = 'Error resetting password.';
+                        resetPasswordMsg.style.display = 'inline-block';
+                    }
+                    resetPasswordBtn.disabled = false;
+                });
+            }
+        });
+    </script>
     <script>
         // Check authentication on page load
         window.addEventListener('load', () => {

@@ -59,6 +59,11 @@
             <button type="submit" class="auth-button">Login</button>
         </form>
 
+        <div class="form-actions">
+            <button id="forgotPasswordBtn" type="button" class="btn btn-link">Forgot password?</button>
+            <span id="forgotPasswordMsg" class="success-message" style="display:none"></span>
+        </div>
+
         <div id="usageInfo" class="usage-info">
             <h3>API Usage</h3>
             <p>You have used <span id="apiCalls">0</span> out of 20 free API calls.</p>
@@ -77,6 +82,30 @@
         const errorMessage = document.getElementById('errorMessage');
         const usageInfo = document.getElementById('usageInfo');
         const apiCallsSpan = document.getElementById('apiCalls');
+
+        // Forgot password logic
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const forgotPasswordMsg = document.getElementById('forgotPasswordMsg');
+        forgotPasswordBtn.addEventListener('click', async () => {
+            const email = prompt('Enter your email to reset password:');
+            if (!email) return;
+            forgotPasswordBtn.disabled = true;
+            forgotPasswordMsg.style.display = 'none';
+            try {
+                const resp = await authClient.sendPasswordReset(email);
+                if (resp.success) {
+                    forgotPasswordMsg.textContent = 'Password reset link sent! Check your email.';
+                    forgotPasswordMsg.style.display = 'inline-block';
+                } else {
+                    forgotPasswordMsg.textContent = resp.message || 'Failed to send reset link.';
+                    forgotPasswordMsg.style.display = 'inline-block';
+                }
+            } catch (err) {
+                forgotPasswordMsg.textContent = 'Error sending reset link.';
+                forgotPasswordMsg.style.display = 'inline-block';
+            }
+            forgotPasswordBtn.disabled = false;
+        });
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
