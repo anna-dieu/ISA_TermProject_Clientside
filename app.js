@@ -105,8 +105,9 @@ class ChatApp {
     const tone = (this.ui.toneSelect && this.ui.toneSelect.value) || 'professional';
     this.ui.setPolishLoading(true);
     try{
-      const polished = await this.api.polish(txt, tone);
-      this.ui.showAIResponse(polished);
+      // Use rewriteText so selected tone is sent to backend
+      const rewritten = await this.api.rewriteText(txt, tone);
+      this.ui.showAIResponse(rewritten);
     }finally{
       this.ui.setPolishLoading(false);
     }
@@ -124,7 +125,9 @@ class ChatApp {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  const api = new APIClient('');
+  // Use API_BASE from config.js for correct backend port
+  const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) ? window.APP_CONFIG.API_BASE : '';
+  const api = new APIClient(apiBase);
   const ui = new ChatUI({
     messagesId: 'messages',
     formId: 'messageForm',

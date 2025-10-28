@@ -45,6 +45,36 @@ class APIClient {
       ];
     }
   }
+
+    // Calls backend ChatGPT rewrite endpoint
+    async rewriteText(userText, tone = 'default') {
+      const token = window.authClient?.getToken?.();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${this.base}/api/openai/rewrite`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ userText, tone })
+      });
+      if (!res.ok) throw new Error('Rewrite failed');
+      const data = await res.json();
+      return data.rewrittenText || '';
+    }
+
+    // Calls backend usage endpoint for OpenAI
+    async getOpenAiUsage() {
+      const token = window.authClient?.getToken?.();
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${this.base}/api/openai/usage`, {
+        method: 'GET',
+        headers
+      });
+      if (!res.ok) throw new Error('Usage fetch failed');
+      return await res.json();
+    }
 }
 
 // expose to global
