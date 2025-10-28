@@ -31,17 +31,6 @@
         </div>
 
         <form id="signupForm" class="auth-form">
-            <div class="form-group">
-                <label for="firstName">First Name</label>
-                <input 
-                    type="text" 
-                    id="firstName" 
-                    name="firstName" 
-                    required 
-                    autocomplete="given-name"
-                    placeholder="Enter your first name"
-                />
-            </div>
             <!-- First name removed: backend only requires email, password, confirmPassword -->
 
             <div class="form-group">
@@ -97,10 +86,10 @@
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const firstName = document.getElementById('firstName').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            // Note: firstName field was removed from the form. Backend requires only email, password, confirmPassword.
 
             // Basic validation
             if (password !== confirmPassword) {
