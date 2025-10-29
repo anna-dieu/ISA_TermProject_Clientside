@@ -7,19 +7,7 @@
     <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-
-    <header class="chat-header">
-        <div class="header-left">
-            <img src="./icons/chat-icon.svg" alt="App icon" class="logo" />
-            <h1 class="app-title">AI powered Chatapp</h1>
-        </div>
-        <nav class="topnav">
-            <a href="#/chat" class="nav-link">Chat</a>
-            <a href="#/dashboard" class="nav-link">Dashboard</a>
-            <a href="#/profile" class="nav-link">Profile</a>
-            <a href="/login.html" class="nav-link auth-link">Login</a>
-        </nav>
-    </header>
+    <div id="navbar-container"></div>
 
     <div class="chat-app">
 
@@ -96,6 +84,7 @@
         <!-- composer removed from global scope; placed inside Chat view -->
     </div>
 
+    <script src="./navbar-loader.js"></script>
     <script src="./config.js"></script>
     <script src="./auth-client.js"></script>
     <script src="./api-client.js"></script>

@@ -7,18 +7,7 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="chat-header">
-      <div class="header-left">
-        <img src="./icons/icon.svg" alt="App icon" class="logo" />
-        <h1 class="app-title">AI powered Chatapp</h1>
-      </div>
-      <nav class="topnav">
-        <a href="./index.html#/chat" class="nav-link">Chat</a>
-        <a href="./index.html#/dashboard" class="nav-link">Dashboard</a>
-        <a href="./index.html#/profile" class="nav-link">Profile</a>
-        <a href="/login.html" class="nav-link auth-link">Login</a>
-      </nav>
-    </header>
+    <div id="navbar-container"></div>
 
     <main class="site-content card card--wide">
       <div class="card-body">
@@ -29,6 +18,7 @@
       </div>
     </main>
 
+    <script src="./navbar-loader.js"></script>
     <script src="./api-client.js"></script>
     <script>
       // route-guard for standalone dashboard
