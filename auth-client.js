@@ -180,4 +180,4 @@ class AuthClient {
 }
 
 // Create a global instance
-const authClient = new AuthClient();
+window.authClient = new AuthClient();

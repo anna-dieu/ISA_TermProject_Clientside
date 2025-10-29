@@ -52,7 +52,7 @@ class APIClient {
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`${this.base}/api/openai/rewrite`, {
+  const res = await fetch(`${this.base}/api/OpenAi/rewrite`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ userText, tone })
@@ -68,7 +68,7 @@ class APIClient {
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch(`${this.base}/api/openai/usage`, {
+  const res = await fetch(`${this.base}/api/OpenAi/usage`, {
         method: 'GET',
         headers
       });
