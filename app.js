@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('auth_token');
     if(protectedViews.includes(view) && !token){
       // redirect to login page
-      window.location.href = '/login.html';
+  window.location.href = 'login.html';
       return;
     }
     showView(view);
@@ -265,11 +265,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         localStorage.removeItem('auth_token');
         // refresh to login
-        window.location.href = '/login.html';
+  window.location.href = 'login.html';
       });
     } else {
       authLink.textContent = 'Login';
-      authLink.href = '/login.html';
+  authLink.href = 'login.html';
     }
   }
   updateAuthLink();

@@ -158,8 +158,8 @@ class AuthClient {
     // LOGOUT
     // -------------------------------------------------------------------
     logout() {
-        this.clearAuthData();
-        window.location.href = '/login.html';
+    this.clearAuthData();
+    window.location.href = 'login.html';
     }
 
     // -------------------------------------------------------------------
