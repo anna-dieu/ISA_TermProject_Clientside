@@ -8,6 +8,12 @@
 // APIClient is provided by api-client.js (shared across the relevant pages)
 
 class ChatUI {
+  clearChat(){
+    if(this.messagesList) {
+      this.messagesList.innerHTML = '';
+    }
+    this.showEmptyState();
+  }
   constructor(selectors = {}){
     this.messagesList = document.getElementById(selectors.messagesId || 'messages');
     this.messageForm = document.getElementById(selectors.formId || 'messageForm');
@@ -65,6 +71,9 @@ class ChatUI {
 }
 
 class ChatApp {
+  handleClearChat(){
+    this.ui.clearChat();
+  }
   constructor(apiClient, ui){
     this.api = apiClient;
     this.ui = ui;
@@ -92,11 +101,16 @@ class ChatApp {
     e.preventDefault();
     const txt = (this.ui.messageInput && this.ui.messageInput.value || '').trim();
     if(!txt) return;
-    this.ui.renderMessage(txt, 'user');
     const tone = (this.ui.toneSelect && this.ui.toneSelect.value) || 'professional';
+    this.ui.renderMessage(txt, 'user'); // Always append user's message first
     this.ui.clearInput();
-    // Save to server (non-blocking)
-    await this.api.saveMessage('user', txt, tone);
+    // Send to backend for rewriting and display result
+    try {
+      const rewritten = await this.api.rewriteText(txt, tone);
+      this.ui.renderMessage(rewritten, 'ai');
+    } catch (err) {
+      this.ui.renderMessage('Error: Could not get response from AI.', 'ai');
+    }
   }
 
   async onPolish(){
@@ -117,9 +131,8 @@ class ChatApp {
     const txt = (this.ui.aiResponse && this.ui.aiResponse.value || '').trim();
     if(!txt) return;
     this.ui.renderMessage(txt, 'ai');
-    const tone = (this.ui.toneSelect && this.ui.toneSelect.value) || '';
     this.ui.hideAIResponse();
-    await this.api.saveMessage('ai', txt, tone);
+    // No saveMessage call needed
   }
 }
 
@@ -141,6 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const app = new ChatApp(api, ui);
   app.init();
+
+  // Add clear chat button handler
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  if(clearChatBtn){
+    clearChatBtn.addEventListener('click', () => app.handleClearChat());
+  }
 
   // Default tone handling: load saved default tone and sync profile <-> composer
   const profileToneSelect = document.getElementById('profileToneSelect');
