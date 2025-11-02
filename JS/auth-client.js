@@ -127,19 +127,6 @@ class AuthClient {
       console.warn("Failed to read user from sessionStorage:", e);
     }
 
-    // Fallback to legacy localStorage
-    try {
-      if (typeof localStorage !== "undefined") {
-        const lu = localStorage.getItem(this.storagePrefix + "user");
-        if (lu) {
-          this._session.user = JSON.parse(lu);
-          return this._session.user;
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to read user from localStorage:", e);
-    }
-
     return null;
   }
 
