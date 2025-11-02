@@ -1,196 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Login - AI Chat App</title>
     <link rel="stylesheet" href="./CSS/styles.css" />
-</head>
-<body>
+  </head>
+  <body>
     <header class="chat-header">
-        <div class="header-left">
-            <img src="./icons/chat-icon.svg" alt="App icon" class="logo" />
-            <h1 class="app-title">AI powered Chatapp</h1>
-        </div>
-        <nav class="topnav">
-            <a href="signup.html" class="nav-link">Sign Up</a>
-        </nav>
+      <div class="header-left">
+        <img src="./icons/chat-icon.svg" alt="App icon" class="logo" />
+        <h1 class="app-title">AI powered Chatapp</h1>
+      </div>
+      <nav class="topnav">
+        <a href="signup.html" class="nav-link">Sign Up</a>
+      </nav>
     </header>
 
     <main class="auth-container">
-        <div class="auth-header">
-            <h2>Login to Your Account</h2>
-            <div class="demo-notice">
-                <strong>Demo Accounts:</strong><br>
-                Admin: admin@admin.com / 111<br>
-                User: john@john.com / 123
-            </div>
+      <div class="auth-header">
+        <h2>Login to Your Account</h2>
+        <div class="demo-notice">
+          <strong>Demo Accounts:</strong><br />
+          Admin: admin@admin.com / 111<br />
+          User: john@john.com / 123
+        </div>
+      </div>
+
+      <div id="errorMessage" class="error-message">Invalid email or password</div>
+
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="Enter your email"
+          />
         </div>
 
-        <div id="errorMessage" class="error-message">
-            Invalid email or password
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            placeholder="Enter your password"
+          />
         </div>
 
-        <form id="loginForm" class="auth-form">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    required 
-                    autocomplete="email"
-                    placeholder="Enter your email"
-                />
-            </div>
+        <button type="submit" class="auth-button">Login</button>
+      </form>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required 
-                    autocomplete="current-password"
-                    placeholder="Enter your password"
-                />
-            </div>
+      <div class="form-actions">
+        <button id="forgotPasswordBtn" type="button" class="btn btn-link">Forgot password?</button>
+        <span id="forgotPasswordMsg" class="success-message" style="display: none"></span>
+      </div>
 
-            <button type="submit" class="auth-button">Login</button>
-        </form>
+      <div id="usageInfo" class="usage-info">
+        <h3>API Usage</h3>
+        <p>You have used <span id="apiCalls">0</span> out of 20 free API calls.</p>
+      </div>
 
-        <div class="form-actions">
-            <button id="forgotPasswordBtn" type="button" class="btn btn-link">Forgot password?</button>
-            <span id="forgotPasswordMsg" class="success-message" style="display:none"></span>
-        </div>
-
-        <div id="usageInfo" class="usage-info">
-            <h3>API Usage</h3>
-            <p>You have used <span id="apiCalls">0</span> out of 20 free API calls.</p>
-        </div>
-
-        <div class="auth-footer">
-            Don't have an account? <a href="signup.html">Sign up</a>
-        </div>
+      <div class="auth-footer">Don't have an account? <a href="signup.html">Sign up</a></div>
     </main>
 
     <script src="./JS/config.js"></script>
     <script src="./JS/auth-client.js"></script>
     <script>
-        // Initialize auth client and handle form submission
-        const loginForm = document.getElementById('loginForm');
-        const errorMessage = document.getElementById('errorMessage');
-        const usageInfo = document.getElementById('usageInfo');
-        const apiCallsSpan = document.getElementById('apiCalls');
+      // Initialize auth client and handle form submission
+      const loginForm = document.getElementById("loginForm");
+      const errorMessage = document.getElementById("errorMessage");
+      const usageInfo = document.getElementById("usageInfo");
+      const apiCallsSpan = document.getElementById("apiCalls");
 
-        // Forgot password logic
-        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
-        const forgotPasswordMsg = document.getElementById('forgotPasswordMsg');
-        forgotPasswordBtn.addEventListener('click', async () => {
-            const email = prompt('Enter your email to reset password:');
-            if (!email) return;
-            forgotPasswordBtn.disabled = true;
-            forgotPasswordMsg.style.display = 'none';
+      // Forgot password logic
+      const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+      const forgotPasswordMsg = document.getElementById("forgotPasswordMsg");
+      forgotPasswordBtn.addEventListener("click", async () => {
+        const email = prompt("Enter your email to reset password:");
+        if (!email) return;
+        forgotPasswordBtn.disabled = true;
+        forgotPasswordMsg.style.display = "none";
+        try {
+          const resp = await authClient.sendPasswordReset(email);
+          if (resp.success) {
+            forgotPasswordMsg.textContent = "Password reset link sent! Check your email.";
+            forgotPasswordMsg.style.display = "inline-block";
+          } else {
+            forgotPasswordMsg.textContent = resp.message || "Failed to send reset link.";
+            forgotPasswordMsg.style.display = "inline-block";
+          }
+        } catch (err) {
+          forgotPasswordMsg.textContent = "Error sending reset link.";
+          forgotPasswordMsg.style.display = "inline-block";
+        }
+        forgotPasswordBtn.disabled = false;
+      });
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        try {
+          const response = await authClient.login(email, password);
+          console.log("Login response:", response); // Debug log
+
+          if (response.success) {
+            console.log("Login successful, redirecting..."); // Debug log
+
+            // Disable form while redirecting
+            loginForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+
+            // Try to get user info including roles from backend
             try {
-                const resp = await authClient.sendPasswordReset(email);
-                if (resp.success) {
-                    forgotPasswordMsg.textContent = 'Password reset link sent! Check your email.';
-                    forgotPasswordMsg.style.display = 'inline-block';
-                } else {
-                    forgotPasswordMsg.textContent = resp.message || 'Failed to send reset link.';
-                    forgotPasswordMsg.style.display = 'inline-block';
-                }
-            } catch (err) {
-                forgotPasswordMsg.textContent = 'Error sending reset link.';
-                forgotPasswordMsg.style.display = 'inline-block';
-            }
-            forgotPasswordBtn.disabled = false;
-        });
+              const token = response.token || authClient.getToken();
+              if (token) {
+                const apiBase =
+                  (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
+                const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
+                  method: "GET",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                });
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+                if (userInfoResponse.ok) {
+                  const userInfo = await userInfoResponse.json();
+                  // Store user data with roles in session manager
+                  authClient.setAuthData({ token: token || authClient.getToken(), user: userInfo });
+                  console.log("User info stored:", userInfo);
 
-            try {
-                const response = await authClient.login(email, password);
-                console.log('Login response:', response); // Debug log
-                
-                if (response.success) {
-                    console.log('Login successful, redirecting...'); // Debug log
-                    
-                    // Disable form while redirecting
-                    loginForm.querySelectorAll('input, button').forEach(el => el.disabled = true);
-                    
-                    // Try to get user info including roles from backend
-                    try {
-                        const token = response.token || localStorage.getItem('auth_token') || localStorage.getItem('ai_chat_token');
-                        if (token) {
-                            const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5157';
-                            const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            });
-                            
-                            if (userInfoResponse.ok) {
-                                const userInfo = await userInfoResponse.json();
-                                // Store user data with roles
-                                localStorage.setItem('ai_chat_user', JSON.stringify(userInfo));
-                                console.log('User info stored:', userInfo);
-                                
-                                // Redirect based on role
-                                if (userInfo.roles && userInfo.roles.includes('Admin')) {
-                                    window.location.href = './admin.html';
-                                    return;
-                                } else {
-                                    window.location.href = './index.html';
-                                    return;
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error fetching user info:', error);
-                    }
-                    
-                    // Fallback: redirect based on email (backward compatibility)
-                    setTimeout(() => {
-                        if (email === 'admin@admin.com' || email === 'aa@aa.aa' || email === 'john@john.com') {
-                            window.location.href = './admin.html';
-                        } else {
-                            window.location.href = './index.html#/chat';
-                        }
-                    }, 100);
-                } else {
-                    console.log('Login failed:', response.message); // Debug log
-                    errorMessage.style.display = 'block';
-                    errorMessage.textContent = response.message || 'Invalid email or password';
+                  // Redirect based on role
+                  if (userInfo.roles && userInfo.roles.includes("Admin")) {
+                    window.location.href = "./admin.html";
+                    return;
+                  } else {
+                    window.location.href = "./index.html";
+                    return;
+                  }
                 }
+              }
             } catch (error) {
-                console.error('Login error:', error); // Debug log
-                errorMessage.style.display = 'block';
-                errorMessage.textContent = 'An error occurred. Please try again.';
+              console.error("Error fetching user info:", error);
             }
-        });
 
-        // Check if user is already logged in
-        window.addEventListener('load', async () => {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                try {
-                    const usage = await authClient.getApiUsage();
-                    if (usage.success) {
-                        usageInfo.style.display = 'block';
-                        apiCallsSpan.textContent = usage.calls;
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch API usage:', error);
-                }
+            // Fallback: redirect based on email (backward compatibility)
+            setTimeout(() => {
+              if (
+                email === "admin@admin.com" ||
+                email === "aa@aa.aa" ||
+                email === "john@john.com"
+              ) {
+                window.location.href = "./admin.html";
+              } else {
+                window.location.href = "./index.html#/chat";
+              }
+            }, 100);
+          } else {
+            console.log("Login failed:", response.message); // Debug log
+            errorMessage.style.display = "block";
+            errorMessage.textContent = response.message || "Invalid email or password";
+          }
+        } catch (error) {
+          console.error("Login error:", error); // Debug log
+          errorMessage.style.display = "block";
+          errorMessage.textContent = "An error occurred. Please try again.";
+        }
+      });
+
+      // Check if user is already logged in
+      window.addEventListener("load", async () => {
+        const token = authClient.getToken();
+        if (token) {
+          try {
+            const usage = await authClient.getApiUsage();
+            if (usage.success) {
+              usageInfo.style.display = "block";
+              apiCallsSpan.textContent = usage.calls;
             }
-        });
+          } catch (error) {
+            console.error("Failed to fetch API usage:", error);
+          }
+        }
+      });
     </script>
-</body>
+  </body>
 </html>

@@ -8,9 +8,14 @@ class AuthClient {
     // Base URL for backend API (update this if port changes)
     this.baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
 
-    // Storage keys for tokens and user data
+    // Session manager: in-memory session + sessionStorage (cleared on tab close)
+    // Legacy token key kept for backward compatibility with older pages that still read localStorage
     this.storagePrefix = "ai_chat_";
     this.legacyTokenKey = "auth_token"; // kept for compatibility
+
+    // Create a simple session manager wrapper
+    this._session = { token: null, user: null };
+    this._useSessionStorage = true; // store session in sessionStorage (not localStorage)
   }
 
   /**
@@ -18,10 +23,28 @@ class AuthClient {
    */
   setAuthData(authData) {
     console.log("Setting auth data:", authData);
-    localStorage.setItem(this.storagePrefix + "token", authData.token);
-    localStorage.setItem(this.legacyTokenKey, authData.token);
-    if (authData.user) {
-      localStorage.setItem(this.storagePrefix + "user", JSON.stringify(authData.user));
+    // update in-memory session
+    this._session.token = authData.token;
+    this._session.user = authData.user || null;
+
+    // Persist to sessionStorage so it survives reloads for this tab only
+    try {
+      if (this._useSessionStorage && typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(this.storagePrefix + "token", authData.token);
+        if (authData.user)
+          sessionStorage.setItem(this.storagePrefix + "user", JSON.stringify(authData.user));
+        else sessionStorage.removeItem(this.storagePrefix + "user");
+      }
+      // Also set legacy token in localStorage for pages that still check it (back-compat)
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(this.legacyTokenKey, authData.token);
+        // Also keep the ai_chat_user in localStorage for backward compatibility
+        if (authData.user)
+          localStorage.setItem(this.storagePrefix + "user", JSON.stringify(authData.user));
+        else localStorage.removeItem(this.storagePrefix + "user");
+      }
+    } catch (e) {
+      console.warn("Failed to persist session data:", e);
     }
   }
 
@@ -29,29 +52,95 @@ class AuthClient {
    * Clear all authentication-related data from storage
    */
   clearAuthData() {
-    localStorage.removeItem(this.storagePrefix + "token");
-    localStorage.removeItem(this.legacyTokenKey);
-    localStorage.removeItem(this.storagePrefix + "user");
+    // Clear in-memory
+    this._session.token = null;
+    this._session.user = null;
+
+    // Clear sessionStorage entries
+    try {
+      if (this._useSessionStorage && typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem(this.storagePrefix + "token");
+        sessionStorage.removeItem(this.storagePrefix + "user");
+      }
+      // Also remove legacy token from localStorage to fully log out older pages
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(this.legacyTokenKey);
+        localStorage.removeItem(this.storagePrefix + "user");
+      }
+    } catch (e) {
+      console.warn("Failed to clear persisted session data:", e);
+    }
   }
 
   /**
    * Retrieve stored JWT token
    */
   getToken() {
-    const token =
-      localStorage.getItem(this.storagePrefix + "token") ||
-      localStorage.getItem(this.legacyTokenKey);
-    console.log("Current token:", token);
-    return token;
+    // Prefer in-memory value
+    if (this._session.token) return this._session.token;
+
+    // Then try sessionStorage (new behavior)
+    try {
+      if (this._useSessionStorage && typeof sessionStorage !== "undefined") {
+        const t = sessionStorage.getItem(this.storagePrefix + "token");
+        if (t) {
+          this._session.token = t;
+          return t;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to read token from sessionStorage:", e);
+    }
+
+    // Fallback to legacy localStorage token for compatibility
+    // try {
+    //   if (typeof localStorage !== "undefined") {
+    //     const lt =
+    //       localStorage.getItem(this.legacyTokenKey) ||
+    //       localStorage.getItem(this.storagePrefix + "token");
+    //     if (lt) {
+    //       this._session.token = lt;
+    //       return lt;
+    //     }
+    //   }
+    // } catch (e) {
+    //   console.warn("Failed to read token from localStorage:", e);
+    // }
+
+    return null;
   }
 
   /**
    * Retrieve stored user information
    */
   getUser() {
-    const userData = localStorage.getItem(this.storagePrefix + "user");
-    console.log("Current user data:", userData);
-    return userData ? JSON.parse(userData) : null;
+    if (this._session.user) return this._session.user;
+    try {
+      if (this._useSessionStorage && typeof sessionStorage !== "undefined") {
+        const u = sessionStorage.getItem(this.storagePrefix + "user");
+        if (u) {
+          this._session.user = JSON.parse(u);
+          return this._session.user;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to read user from sessionStorage:", e);
+    }
+
+    // Fallback to legacy localStorage
+    try {
+      if (typeof localStorage !== "undefined") {
+        const lu = localStorage.getItem(this.storagePrefix + "user");
+        if (lu) {
+          this._session.user = JSON.parse(lu);
+          return this._session.user;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to read user from localStorage:", e);
+    }
+
+    return null;
   }
 
   /**
@@ -115,65 +204,30 @@ class AuthClient {
   // LOGIN
   // -------------------------------------------------------------------
   /**
-   * Login a user by sending credentials to ASP.NET Identity endpoint
+   * Login a user by sending credentials to ASP.NET Identity endpoint (Bearer token)
    * @param {string} email
    * @param {string} password
    */
   async login(email, password) {
-    console.log("Login attempt:", email);
+    const res = await fetch(this.baseUrl + "/login", {
+      // Identity API Bearer token endpoint
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, message: data?.message || "Login failed" };
 
-    const endpoint = "/login"; // ASP.NET Identity login endpoint
-    const body = JSON.stringify({ email, password });
-    const headers = { "Content-Type": "application/json" };
-
-    const res = await this._fetchRaw(endpoint, { method: "POST", headers, body });
-
-    console.log("Login raw response:", res);
-    console.log("Login response data:", res.data);
-    console.log("Login response status:", res.status);
-
-    if (!res || !res.ok) {
-      console.warn("Login failed:", res);
-      // Try to get more details from error response
-      let errorMsg = "Invalid email or password";
-      if (res.data) {
-        if (res.data.errors) {
-          errorMsg = Object.values(res.data.errors).flat().join(", ");
-        } else if (res.data.message) {
-          errorMsg = res.data.message;
-        }
-      }
-      return { success: false, message: errorMsg };
-    }
-
-    // ASP.NET Identity API may return token in response.data or directly
-    let token = this._extractTokenFromResponse(res.data);
-
-    // If token not found, try the raw response
-    if (!token && res.data && typeof res.data === "object") {
-      // Try accessing properties directly
-      token = res.data.token || res.data.accessToken || res.data.bearerToken;
-    }
-
-    console.log(
-      "Extracted token:",
-      token ? "Token found (" + token.substring(0, 20) + "...)" : "No token"
-    );
-    console.log("Full response structure:", JSON.stringify(res.data, null, 2));
-
+    // Extract Bearer token from response
+    const token = data.accessToken || data.token;
     if (token) {
-      const user = res.data?.user || { email, userName: email };
-      this.setAuthData({ token, user });
-      console.log("Auth data saved:", { token: token.substring(0, 20) + "...", user });
-      return { success: true, token, user };
+      console.log("Token received, storing auth data");
+      this.setAuthData({ token, user: { email } });
+      return { success: true, user: { email } };
+    } else {
+      console.warn("No token in login response:", data);
+      return { success: false, message: "No token received" };
     }
-
-    // If no token in response, check if login was successful but token is missing
-    console.error("Login response (no token):", res.data);
-    return {
-      success: false,
-      message: "Login failed: No token returned. Response: " + JSON.stringify(res.data),
-    };
   }
 
   // -------------------------------------------------------------------
@@ -198,39 +252,80 @@ class AuthClient {
 
     const token = this._extractTokenFromResponse(res.data);
     if (token) {
-      const user = res.data.user || { email: userData.email };
-      this.setAuthData({ token, user });
-      return { success: true, token, user };
+      // Auto-login after successful signup
+      this.setAuthData({ token });
+      return { success: true, token };
     }
 
-    return { success: true, data: res.data };
+    return { success: false, message: "Signup successful, but failed to retrieve token" };
+  }
+
+  // -------------------------------------------------------------------
+  // USER FETCH
+  // -------------------------------------------------------------------
+  /**
+   * Fetch the authenticated user's profile from the server
+   */
+  async fetchUser() {
+    const token = this.getToken();
+    if (!token) return null;
+
+    try {
+      const res = await fetch(this.baseUrl + "/api/account/me", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) return null;
+      const user = await res.json();
+      this._session.user = user;
+      if (this._useSessionStorage)
+        sessionStorage.setItem(this.storagePrefix + "user", JSON.stringify(user));
+      return user;
+    } catch (e) {
+      return null;
+    }
   }
 
   // -------------------------------------------------------------------
   // LOGOUT
   // -------------------------------------------------------------------
-  logout() {
+  /**
+   * Logout the current user (with Bearer tokens, just clear local data)
+   */
+  async logout() {
+    // With Bearer tokens, we just clear local data (no server-side session to invalidate)
     this.clearAuthData();
     window.location.href = "login.html";
   }
 
-  // -------------------------------------------------------------------
-  // API USAGE (optional feature)
-  // -------------------------------------------------------------------
+  /**
+   * Fetch API usage (keeps compatibility with older pages that call authClient.getApiUsage())
+   */
   async getApiUsage() {
-    if (!this.isAuthenticated()) {
-      return { success: false, message: "Not authenticated" };
-    }
+    const token = this.getToken();
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await this._fetchRaw("/usage", { method: "GET" });
-    if (res.ok && res.data) {
-      return { success: true, calls: res.data.calls || 0, raw: res.data };
+    try {
+      const res = await fetch(this.baseUrl + "/api/OpenAi/usage", {
+        method: "GET",
+        headers,
+      });
+      if (!res.ok) return { success: false, message: "Failed to fetch usage", calls: 0 };
+      const data = await res.json();
+      return { success: true, calls: data.calls || 0, raw: data };
+    } catch (e) {
+      return { success: false, message: e?.message || String(e), calls: 0 };
     }
-
-    return { success: false, message: "Failed to fetch usage", calls: 0 };
   }
 }
 
-// Create a global instance
-const authClient = new AuthClient();
-window.authClient = authClient; // Expose globally
+// Expose a global instance for pages that load this file with a plain <script> tag
+const authClientInstance = new AuthClient();
+window.authClient = authClientInstance;
+
+// Note: we intentionally avoid using ES module `export` here so the file can be
+// loaded directly with a plain <script> tag. Module consumers can wrap or import
+// this file with their build tools if needed.
