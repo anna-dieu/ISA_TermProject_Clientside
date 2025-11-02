@@ -1,116 +1,162 @@
-// Initialize auth client and handle form submission
-const loginForm = document.getElementById("loginForm");
-const errorMessage = document.getElementById("errorMessage");
-const usageInfo = document.getElementById("usageInfo");
-const apiCallsSpan = document.getElementById("apiCalls");
+class LoginPage {
+  constructor(authClient) {
+    this.authClient = authClient;
+    this.loginForm = document.getElementById("loginForm");
+    this.errorMessage = document.getElementById("errorMessage");
+    this.usageInfo = document.getElementById("usageInfo");
+    this.apiCallsSpan = document.getElementById("apiCalls");
+    this.forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+    this.forgotPasswordMsg = document.getElementById("forgotPasswordMsg");
 
-// Forgot password logic
-const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
-const forgotPasswordMsg = document.getElementById("forgotPasswordMsg");
-forgotPasswordBtn.addEventListener("click", async () => {
-  const email = prompt("Enter your email to reset password:");
-  if (!email) return;
-  forgotPasswordBtn.disabled = true;
-  forgotPasswordMsg.style.display = "none";
-  try {
-    const resp = await authClient.sendPasswordReset(email);
-    if (resp.success) {
-      forgotPasswordMsg.textContent = "Password reset link sent! Check your email.";
-      forgotPasswordMsg.style.display = "inline-block";
-    } else {
-      forgotPasswordMsg.textContent = resp.message || "Failed to send reset link.";
-      forgotPasswordMsg.style.display = "inline-block";
-    }
-  } catch (err) {
-    forgotPasswordMsg.textContent = "Error sending reset link.";
-    forgotPasswordMsg.style.display = "inline-block";
+    this._bindEvents();
+    // On load, check API usage if already authenticated
+    window.addEventListener("load", async () => this._checkUsage());
   }
-  forgotPasswordBtn.disabled = false;
-});
 
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+  _bindEvents() {
+    if (this.forgotPasswordBtn) {
+      this.forgotPasswordBtn.addEventListener("click", async () => this._handleForgot());
+    }
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+    if (this.loginForm) {
+      this.loginForm.addEventListener("submit", async (e) => this._handleSubmit(e));
+    }
+  }
 
-  try {
-    const response = await authClient.login(email, password);
-    console.log("Login response:", response); // Debug log
+  async _handleForgot() {
+    const email = prompt("Enter your email to reset password:");
+    if (!email) return;
+    this.forgotPasswordBtn.disabled = true;
+    if (this.forgotPasswordMsg) this.forgotPasswordMsg.style.display = "none";
+    try {
+      const resp = await this.authClient.sendPasswordReset(email);
+      if (resp.success) {
+        this.forgotPasswordMsg.textContent = "Password reset link sent! Check your email.";
+        this.forgotPasswordMsg.style.display = "inline-block";
+      } else {
+        this.forgotPasswordMsg.textContent = resp.message || "Failed to send reset link.";
+        this.forgotPasswordMsg.style.display = "inline-block";
+      }
+    } catch (err) {
+      this.forgotPasswordMsg.textContent = "Error sending reset link.";
+      this.forgotPasswordMsg.style.display = "inline-block";
+    }
+    this.forgotPasswordBtn.disabled = false;
+  }
 
-    if (response.success) {
-      console.log("Login successful, redirecting..."); // Debug log
+  async _handleSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-      // Disable form while redirecting
-      loginForm.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+    try {
+      const response = await this.authClient.login(email, password);
+      console.log("Login response:", response);
 
-      // Try to get user info including roles from backend
-      try {
-        const token = response.token || authClient.getToken();
-        if (token) {
-          const apiBase =
-            (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
-          const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
+      if (response.success) {
+        console.log("Login successful, redirecting...");
+        if (this.loginForm) {
+          this.loginForm.querySelectorAll("input, button").forEach((el) => {
+            el.disabled = true;
           });
+        }
 
-          if (userInfoResponse.ok) {
-            const userInfo = await userInfoResponse.json();
-            // Store user data with roles in session manager
-            authClient.setAuthData({ token: token || authClient.getToken(), user: userInfo });
-            console.log("User info stored:", userInfo);
+        try {
+          const token = response.token || this.authClient.getToken();
+          if (token) {
+            const apiBase =
+              (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
+            const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            });
 
-            // Redirect based on role
-            if (userInfo.roles && userInfo.roles.includes("Admin")) {
-              window.location.href = "./admin.html";
-              return;
-            } else {
-              window.location.href = "./index.html";
-              return;
+            if (userInfoResponse.ok) {
+              const userInfo = await userInfoResponse.json();
+              this.authClient.setAuthData({
+                token: token || this.authClient.getToken(),
+                user: userInfo,
+              });
+              console.log("User info stored:", userInfo);
+
+              if (userInfo.roles && userInfo.roles.includes("Admin")) {
+                window.location.href = "./admin.html";
+                return;
+              } else {
+                window.location.href = "./index.html";
+                return;
+              }
             }
           }
+        } catch (error) {
+          console.error("Error fetching user info:", error);
         }
-      } catch (error) {
-        console.error("Error fetching user info:", error);
-      }
 
-      // Fallback: redirect based on email (backward compatibility)
-      setTimeout(() => {
-        if (email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com") {
-          window.location.href = "./admin.html";
-        } else {
-          window.location.href = "./index.html#/chat";
+        // Fallback redirect
+        setTimeout(() => {
+          if (email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com") {
+            window.location.href = "./admin.html";
+          } else {
+            window.location.href = "./index.html#/chat";
+          }
+        }, 100);
+      } else {
+        console.log("Login failed:", response.message);
+        if (this.errorMessage) {
+          this.errorMessage.style.display = "block";
+          this.errorMessage.textContent = response.message || "Invalid email or password";
         }
-      }, 100);
-    } else {
-      console.log("Login failed:", response.message); // Debug log
-      errorMessage.style.display = "block";
-      errorMessage.textContent = response.message || "Invalid email or password";
-    }
-  } catch (error) {
-    console.error("Login error:", error); // Debug log
-    errorMessage.style.display = "block";
-    errorMessage.textContent = "An error occurred. Please try again.";
-  }
-});
-
-// Check if user is already logged in
-window.addEventListener("load", async () => {
-  const token = authClient.getToken();
-  if (token) {
-    try {
-      const usage = await authClient.getApiUsage();
-      if (usage.success) {
-        usageInfo.style.display = "block";
-        apiCallsSpan.textContent = usage.calls;
       }
     } catch (error) {
-      console.error("Failed to fetch API usage:", error);
+      console.error("Login error:", error);
+      if (this.errorMessage) {
+        this.errorMessage.style.display = "block";
+        this.errorMessage.textContent = "An error occurred. Please try again.";
+      }
     }
   }
-});
 
+  async _checkUsage() {
+    const token = this.authClient.getToken();
+    if (token && this.usageInfo && this.apiCallsSpan) {
+      try {
+        const usage = await this.authClient.getApiUsage();
+        if (usage.success) {
+          this.usageInfo.style.display = "block";
+          this.apiCallsSpan.textContent = usage.calls;
+        }
+      } catch (error) {
+        console.error("Failed to fetch API usage:", error);
+      }
+    }
+  }
+}
+
+// Initialize when DOM is ready. Auth client is loaded before this script in login.html,
+// but wait briefly if it's not immediately available.
+document.addEventListener("DOMContentLoaded", () => {
+  const start = () => {
+    if (window.authClient) {
+      const instance = new LoginPage(window.authClient);
+      window.login = instance;
+    } else {
+      // poll briefly
+      let tries = 0;
+      const max = 10;
+      const wait = () => {
+        if (window.authClient || tries++ >= max) {
+          const instance = new LoginPage(
+            window.authClient || { login: async () => ({ success: false }) }
+          );
+          window.login = instance;
+        } else setTimeout(wait, 100);
+      };
+      wait();
+    }
+  };
+
+  start();
+});

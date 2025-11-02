@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -18,36 +18,10 @@
       </div>
     </main>
 
-    <script src="./navbar-loader.js"></script>
-    <script src="./api-client.js"></script>
-    <script>
-      // route-guard for standalone dashboard
-      if(!localStorage.getItem('auth_token')){
-        window.location.href = '/login.html';
-      }
-      // auth-aware nav
-      const navAuth = document.querySelector('.auth-link');
-      if(navAuth){
-        if(localStorage.getItem('auth_token')){
-          navAuth.textContent = 'Sign out';
-          navAuth.href = 'javascript:void(0)';
-          navAuth.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('auth_token'); window.location.href = '/login.html'; });
-        } else {
-          navAuth.textContent = 'Login';
-          navAuth.href = '/login.html';
-        }
-      }
-      (async ()=>{
-        const api = new APIClient('');
-        const list = await api.listConversations();
-        const ul = document.getElementById('conversationsList');
-        list.forEach(c=>{
-          const li = document.createElement('li');
-          li.className = 'message system';
-          li.innerHTML = `<strong>${c.title}</strong><div class='meta'>${c.last} · ${c.updated}</div>`;
-          ul.appendChild(li);
-        });
-      })();
-    </script>
+    <script src="./JS/config.js"></script>
+    <script src="./JS/auth-client.js"></script>
+    <script src="./JS/navbar-loader.js"></script>
+    <script src="./JS/api-client.js"></script>
+    <script src="./JS/dashboard.js"></script>
   </body>
 </html>

@@ -1,357 +1,416 @@
-// Check if user is admin by verifying with backend API
-async function isAdminUser() {
-  // Check if user has token
-  const token = localStorage.getItem("auth_token") || localStorage.getItem("ai_chat_token");
-  console.log("isAdminUser: Checking token...", token ? "Token found" : "No token");
+/* global APIClient */
 
-  if (!token) {
-    console.log("isAdminUser: No token found");
-    return false;
+class AdminPage {
+  constructor() {
+    this.apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
+    this.authClient = window.authClient || null; // may be available later
+    this.api = window.api || null; // will create if missing
+
+    // DOM elements (populated on init)
+    this.tbody = null;
+    this.messageArea = null;
+
+    // Bind methods used as callbacks
+    this.loadUsers = this.loadUsers.bind(this);
+    this.renderUsers = this.renderUsers.bind(this);
+    this.showMessage = this.showMessage.bind(this);
+    this.escapeHtml = this.escapeHtml.bind(this);
+    this.showCreateForm = this.showCreateForm.bind(this);
+    this.hideCreateForm = this.hideCreateForm.bind(this);
+    this.handleCreateUser = this.handleCreateUser.bind(this);
+    this.editUser = this.editUser.bind(this);
+    this.hideEditForm = this.hideEditForm.bind(this);
+    this.handleUpdateUser = this.handleUpdateUser.bind(this);
+    this.deleteUser = this.deleteUser.bind(this);
+    this.promoteUser = this.promoteUser.bind(this);
+    this.demoteUser = this.demoteUser.bind(this);
+    this.isAdminUser = this.isAdminUser.bind(this);
   }
 
-  try {
-    // Try to get current user info from backend
-    const headers = { "Content-Type": "application/json" };
-    headers["Authorization"] = `Bearer ${token}`;
+  getTokenFallback() {
+    if (this.authClient && this.authClient.getToken) return this.authClient.getToken();
+    return localStorage.getItem("auth_token") || localStorage.getItem("ai_chat_token");
+  }
 
-    const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
-    const url = `${apiBase}/api/user/me`;
-    console.log("isAdminUser: Fetching from", url);
+  // Check admin by calling backend /api/user/me or falling back
+  async isAdminUser() {
+    // Prefer authClient token if present
+    const token =
+      (this.authClient && this.authClient.getToken && this.authClient.getToken()) ||
+      localStorage.getItem("auth_token") ||
+      localStorage.getItem("ai_chat_token");
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers,
-    });
+    console.log("isAdminUser: Checking token...", token ? "Token found" : "No token");
 
-    console.log("isAdminUser: Response status", response.status, response.statusText);
+    if (!token) return false;
 
-    if (response.ok) {
-      const userData = await response.json();
-      console.log("isAdminUser: Current user data received:", userData);
-      console.log("isAdminUser: User roles:", userData.roles);
+    try {
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+      const url = `${this.apiBase}/api/user/me`;
+      console.log("isAdminUser: Fetching from", url);
 
-      // Check if user has Admin role
-      const isAdmin = userData.roles && userData.roles.includes("Admin");
-      console.log("isAdminUser: Is admin?", isAdmin);
+      const response = await fetch(url, { method: "GET", headers });
+      console.log("isAdminUser: Response status", response.status, response.statusText);
 
-      // Store user data with roles
-      if (userData) {
-        localStorage.setItem("ai_chat_user", JSON.stringify(userData));
-      }
+      if (response.ok) {
+        const userData = await response.json();
+        console.log("isAdminUser: Current user data received:", userData);
 
-      return isAdmin;
-    } else {
-      // Try to get error details
-      const errorText = await response.text();
-      console.error("isAdminUser: Failed to get user info:", response.status, errorText);
+        const isAdmin = (userData.roles && userData.roles.includes("Admin")) || userData.isAdmin;
 
-      // If 401 or 403, try alternative check - maybe try to access admin endpoint
-      if (response.status === 401 || response.status === 403) {
-        console.log("isAdminUser: Got 401/403, trying admin endpoint as fallback...");
-        // Try to access admin users endpoint - if it works, user is admin
+        // persist user data for backwards-compat
         try {
-          const adminResponse = await fetch(`${apiBase}/api/admin/AdminUsers`, {
-            method: "GET",
-            headers,
-          });
-          console.log("isAdminUser: Admin endpoint response:", adminResponse.status);
-          if (adminResponse.ok || adminResponse.status === 200) {
-            return true;
-          }
+          localStorage.setItem("ai_chat_user", JSON.stringify(userData));
         } catch (e) {
-          console.error("isAdminUser: Error checking admin endpoint:", e);
+          /* ignore */
+        }
+
+        return !!isAdmin;
+      } else {
+        const errorText = await response.text();
+        console.error("isAdminUser: Failed to get user info:", response.status, errorText);
+
+        if (response.status === 401 || response.status === 403) {
+          // Try admin endpoint as fallback
+          try {
+            const adminResponse = await fetch(`${this.apiBase}/api/admin/AdminUsers`, {
+              method: "GET",
+              headers,
+            });
+            console.log("isAdminUser: Admin endpoint response:", adminResponse.status);
+            if (adminResponse.ok) return true;
+          } catch (e) {
+            console.error("isAdminUser: Error checking admin endpoint:", e);
+          }
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error("isAdminUser: Error checking admin status:", error);
+      // fallback to stored user
+      const userData = localStorage.getItem("ai_chat_user");
+      if (userData) {
+        try {
+          const u = JSON.parse(userData);
+          const email = u.email || u.userName || "";
+          const isHardcoded =
+            email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com";
+          return isHardcoded;
+        } catch (e) {
+          console.error(e);
         }
       }
       return false;
     }
-  } catch (error) {
-    console.error("isAdminUser: Error checking admin status:", error);
-    // Fallback: check stored user data for admin email (backward compatibility)
-    const userData = localStorage.getItem("ai_chat_user");
-    if (userData) {
+  }
+
+  // Initialize instance: ensure apiClient, cache DOM nodes, and run admin check
+  async init() {
+    // Ensure authClient reference
+    if (!this.authClient && window.authClient) this.authClient = window.authClient;
+
+    // Ensure api client
+    if (!this.api) {
       try {
-        const user = JSON.parse(userData);
-        const email = user.email || user.userName || "";
-        console.log("isAdminUser: Fallback check for email:", email);
-        // Fallback to hardcoded check if API fails
-        const isHardcodedAdmin =
-          email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com";
-        console.log("isAdminUser: Hardcoded check result:", isHardcodedAdmin);
-        return isHardcodedAdmin;
+        this.api = new APIClient(this.apiBase);
+        window.api = this.api; // expose globally for other scripts
       } catch (e) {
-        console.error("isAdminUser: Error parsing user data:", e);
+        console.warn("AdminPage: Failed to construct APIClient:", e);
       }
     }
-    return false;
-  }
-}
 
-// Initialize on page load
-document.addEventListener("DOMContentLoaded", async () => {
-  // Wait a bit for scripts to load
-  await new Promise((resolve) => setTimeout(resolve, 100));
+    // Cache DOM nodes
+    this.tbody = document.getElementById("usersTableBody");
+    this.messageArea = document.getElementById("messageArea");
 
-  // Check for token first
-  const token = localStorage.getItem("auth_token") || localStorage.getItem("ai_chat_token");
-  console.log("Token check:", {
-    auth_token: localStorage.getItem("auth_token") ? "found" : "missing",
-    ai_chat_token: localStorage.getItem("ai_chat_token") ? "found" : "missing",
-    authClient: window.authClient ? "exists" : "missing",
-    tokenFromAuthClient: window.authClient?.getToken?.() ? "found" : "missing",
-  });
+    // Attach form handlers (if forms are present)
+    const createForm = document.getElementById("createForm");
+    if (createForm) createForm.addEventListener("submit", this.handleCreateUser);
 
-  // Initialize API client after DOM is loaded and scripts are available
-  const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
-  window.api = new APIClient(apiBase);
+    const editForm = document.getElementById("editForm");
+    if (editForm) editForm.addEventListener("submit", this.handleUpdateUser);
 
-  // Check admin status (this is now async)
-  const isAdmin = await isAdminUser();
-  console.log("Admin check result:", isAdmin);
+    // Run admin check and show/hide sections accordingly
+    const isAdmin = await this.isAdminUser();
+    console.log("Admin check result:", isAdmin);
 
-  if (isAdmin) {
-    // Show admin content
-    document.getElementById("adminContent").style.display = "block";
-    document.getElementById("accessDenied").style.display = "none";
-    // Load users
-    loadUsers();
-  } else {
-    // Show access denied
-    document.getElementById("adminContent").style.display = "none";
-    document.getElementById("accessDenied").style.display = "block";
+    const adminContent = document.getElementById("adminContent");
+    const accessDenied = document.getElementById("accessDenied");
 
-    // If no token, suggest login
-    if (!token) {
-      document.getElementById("accessDenied").innerHTML = `
-                        <h2>Not Logged In</h2>
-                        <p>You must be logged in as an administrator to access this page.</p>
-                        <a href="login.html" class="btn btn-primary">Go to Login</a>
-                    `;
+    if (isAdmin) {
+      if (adminContent) adminContent.style.display = "block";
+      if (accessDenied) accessDenied.style.display = "none";
+      await this.loadUsers();
     } else {
-      document.getElementById("accessDenied").innerHTML = `
-                        <h2>Access Denied</h2>
-                        <p>You do not have administrator privileges. Only users with Admin role can access this page.</p>
-                        <a href="index.html" class="btn btn-primary">Go to Chat</a>
-                    `;
+      if (adminContent) adminContent.style.display = "none";
+      if (accessDenied) accessDenied.style.display = "block";
+
+      const token =
+        (this.authClient && this.authClient.getToken && this.authClient.getToken()) ||
+        localStorage.getItem("auth_token") ||
+        localStorage.getItem("ai_chat_token");
+
+      if (!token && accessDenied) {
+        accessDenied.innerHTML = `
+          <h2>Not Logged In</h2>
+          <p>You must be logged in as an administrator to access this page.</p>
+          <a href="login.html" class="btn btn-primary">Go to Login</a>
+        `;
+      } else if (accessDenied) {
+        accessDenied.innerHTML = `
+          <h2>Access Denied</h2>
+          <p>You do not have administrator privileges. Only users with Admin role can access this page.</p>
+          <a href="index.html" class="btn btn-primary">Go to Chat</a>
+        `;
+      }
     }
   }
-});
 
-async function loadUsers() {
-  const tbody = document.getElementById("usersTableBody");
-  try {
-    // Ensure authClient is initialized
-    if (!window.authClient) {
-      console.error("authClient not initialized");
-      throw new Error("Authentication client not available");
+  // Load users via API client and render
+  async loadUsers() {
+    if (!this.tbody) this.tbody = document.getElementById("usersTableBody");
+    const tbody = this.tbody;
+    try {
+      if (!this.authClient) throw new Error("Authentication client not available");
+
+      const token = this.getTokenFallback();
+
+      if (!token) {
+        tbody.innerHTML = `<tr>
+          <td colspan="4" class="loading">Please log in to view users.</td>
+        </tr>`;
+        this.showMessage(
+          "You must be logged in to view users. Please log in and try again.",
+          "error"
+        );
+        return;
+      }
+
+      const users = await (this.api && this.api.getUsers ? this.api.getUsers() : []);
+      this.renderUsers(users || []);
+    } catch (error) {
+      console.error("Error loading users:", error);
+      const errorMsg = error.message || "Unknown error occurred";
+      if (tbody) {
+        tbody.innerHTML =
+          '<tr><td colspan="4" class="loading">Error loading users: ' +
+          this.escapeHtml(errorMsg) +
+          "</td></tr>";
+      }
+      this.showMessage(`Error: ${errorMsg}`, "error");
     }
+  }
 
-    // Get token directly from localStorage as fallback
-    const token =
-      window.authClient.getToken() ||
-      localStorage.getItem("auth_token") ||
-      localStorage.getItem("ai_chat_token");
-
-    if (!token) {
-      console.error("No authentication token found");
-      tbody.innerHTML = `<tr><td colspan="4" class="loading">Please log in to view users.</td></tr>`;
-      showMessage("You must be logged in to view users. Please log in and try again.", "error");
+  renderUsers(users) {
+    if (!this.tbody) this.tbody = document.getElementById("usersTableBody");
+    const tbody = this.tbody;
+    if (!Array.isArray(users) || users.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
       return;
     }
 
-    console.log("Loading users with token:", token ? "Token found" : "No token");
+    tbody.innerHTML = users
+      .map((user) => {
+        const roles = user.roles || [];
+        const isAdmin = roles.includes("Admin");
+        const roleDisplay = roles.length > 0 ? roles.join(", ") : "User";
+        const roleBadgeClass = isAdmin ? "admin" : "user";
 
-    const users = await window.api.getUsers();
-    console.log("Users loaded:", users);
-    renderUsers(users);
-  } catch (error) {
-    console.error("Error loading users:", error);
-    const errorMsg = error.message || "Unknown error occurred";
-    tbody.innerHTML = `<tr><td colspan="4" class="loading">Error loading users: ${escapeHtml(
-      errorMsg
-    )}</td></tr>`;
-    showMessage(`Error: ${errorMsg}`, "error");
+        const promoteBtn = !isAdmin
+          ? `<button class="btn-small btn-promote" onclick="promoteUser('${user.id}')">Promote to Admin</button>`
+          : "";
+
+        const demoteBtn = isAdmin
+          ? `<button class="btn-small btn-demote" onclick="demoteUser('${user.id}')">Demote to User</button>`
+          : "";
+
+        const editBtn = `<button class="btn-small btn-edit" onclick="editUser('${
+          user.id
+        }', '${this.escapeHtml(user.email)}', '${roleDisplay}')">Edit</button>`;
+
+        const deleteBtn = `<button class="btn-small btn-delete" onclick="deleteUser('${
+          user.id
+        }', '${this.escapeHtml(user.email)}')">Delete</button>`;
+
+        return `
+          <tr>
+            <td>${this.escapeHtml(user.email)}</td>
+            <td>${this.escapeHtml(user.userName)}</td>
+            <td>
+              <span class="role-badge ${roleBadgeClass}">${this.escapeHtml(roleDisplay)}</span>
+            </td>
+            <td>
+              <div class="btn-group">
+                ${promoteBtn}${demoteBtn}${editBtn}${deleteBtn}
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  showMessage(message, type = "success") {
+    if (!this.messageArea) this.messageArea = document.getElementById("messageArea");
+    const messageArea = this.messageArea;
+    if (!messageArea) return;
+    const className = type === "error" ? "error-message" : "success-message";
+    messageArea.innerHTML = `<div class="${className}">${this.escapeHtml(message)}</div>`;
+    setTimeout(() => {
+      messageArea.innerHTML = "";
+    }, 5000);
+  }
+
+  // Create user flow
+  showCreateForm() {
+    const el = document.getElementById("createUserForm");
+    if (el) el.style.display = "block";
+    this.hideEditForm();
+  }
+
+  hideCreateForm() {
+    const el = document.getElementById("createUserForm");
+    if (el) el.style.display = "none";
+    const form = document.getElementById("createForm");
+    if (form) form.reset();
+  }
+
+  async handleCreateUser(event) {
+    event.preventDefault();
+    const email = document.getElementById("createEmail").value;
+    const password = document.getElementById("createPassword").value;
+    const role = document.getElementById("createRole").value;
+
+    try {
+      if (!this.api || !this.api.createUser) throw new Error("API client not available");
+      await this.api.createUser({ email, password, role });
+      this.showMessage(`User ${email} created successfully!`, "success");
+      this.hideCreateForm();
+      this.loadUsers();
+    } catch (error) {
+      this.showMessage(`Error creating user: ${error.message}`, "error");
+    }
+  }
+
+  // Edit user
+  editUser(userId, email, currentRole) {
+    const idEl = document.getElementById("editUserId");
+    const emailEl = document.getElementById("editEmail");
+    const roleEl = document.getElementById("editRole");
+
+    if (idEl) idEl.value = userId;
+    if (emailEl) emailEl.value = email;
+    if (roleEl) roleEl.value = currentRole.includes("Admin") ? "Admin" : "User";
+
+    const formEl = document.getElementById("editUserForm");
+    if (formEl) formEl.classList.add("active");
+    this.hideCreateForm();
+    const editForm = document.getElementById("editUserForm");
+    if (editForm) editForm.scrollIntoView({ behavior: "smooth" });
+  }
+
+  hideEditForm() {
+    const form = document.getElementById("editUserForm");
+    if (form) form.classList.remove("active");
+    const editForm = document.getElementById("editForm");
+    if (editForm) editForm.reset();
+  }
+
+  async handleUpdateUser(event) {
+    event.preventDefault();
+    const userId = document.getElementById("editUserId").value;
+    const email = document.getElementById("editEmail").value;
+    const role = document.getElementById("editRole").value;
+
+    try {
+      if (!this.api || !this.api.updateUser) throw new Error("API client not available");
+      await this.api.updateUser(userId, { email, role });
+      this.showMessage(`User updated successfully!`, "success");
+      this.hideEditForm();
+      this.loadUsers();
+    } catch (error) {
+      this.showMessage(`Error updating user: ${error.message}`, "error");
+    }
+  }
+
+  // Delete
+  async deleteUser(userId, email) {
+    const ok = confirm(
+      `Are you sure you want to delete user "${email}"? This action cannot be undone.`
+    );
+    if (!ok) return;
+
+    try {
+      if (!this.api || !this.api.deleteUser) throw new Error("API client not available");
+      await this.api.deleteUser(userId);
+      this.showMessage(`User ${email} deleted successfully!`, "success");
+      this.loadUsers();
+    } catch (error) {
+      this.showMessage(`Error deleting user: ${error.message}`, "error");
+    }
+  }
+
+  // Promote / Demote
+  async promoteUser(userId) {
+    try {
+      if (!this.api || !this.api.promoteToAdmin) throw new Error("API client not available");
+      await this.api.promoteToAdmin(userId);
+      this.showMessage("User promoted to Admin successfully!", "success");
+      this.loadUsers();
+    } catch (error) {
+      this.showMessage(`Error promoting user: ${error.message}`, "error");
+    }
+  }
+
+  async demoteUser(userId) {
+    if (!confirm("Are you sure you want to demote this user from Admin to User?")) return;
+    try {
+      if (!this.api || !this.api.demoteToUser) throw new Error("API client not available");
+      await this.api.demoteToUser(userId);
+      this.showMessage("User demoted to User role successfully!", "success");
+      this.loadUsers();
+    } catch (error) {
+      this.showMessage(`Error demoting user: ${error.message}`, "error");
+    }
   }
 }
 
-function renderUsers(users) {
-  const tbody = document.getElementById("usersTableBody");
-  if (users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
-    return;
-  }
+// Initialize AdminPage on DOMContentLoaded and expose instance + backward-compatible globals
+document.addEventListener("DOMContentLoaded", async () => {
+  // Small delay to allow authClient and APIClient to load if they are loaded shortly after
+  await new Promise((r) => setTimeout(r, 100));
 
-  tbody.innerHTML = users
-    .map((user) => {
-      const roles = user.roles || [];
-      const isAdmin = roles.includes("Admin");
-      const roleDisplay = roles.length > 0 ? roles.join(", ") : "User";
-      const roleBadgeClass = isAdmin ? "admin" : "user";
+  const adminPage = new AdminPage();
+  // Try to pick up authClient if it became available
+  if (!adminPage.authClient && window.authClient) adminPage.authClient = window.authClient;
+  // If an APIClient is already present, use it
+  if (!adminPage.api && window.api) adminPage.api = window.api;
 
-      return `
-                    <tr>
-                        <td>${escapeHtml(user.email)}</td>
-                        <td>${escapeHtml(user.userName)}</td>
-                        <td>
-                            <span class="role-badge ${roleBadgeClass}">${escapeHtml(
-        roleDisplay
-      )}</span>
-                        </td>
-                        <td>
-                            <div class="btn-group">
-                                ${
-                                  !isAdmin
-                                    ? `<button class="btn-small btn-promote" onclick="promoteUser('${user.id}')">Promote to Admin</button>`
-                                    : ""
-                                }
-                                ${
-                                  isAdmin
-                                    ? `<button class="btn-small btn-demote" onclick="demoteUser('${user.id}')">Demote to User</button>`
-                                    : ""
-                                }
-                                <button class="btn-small btn-edit" onclick="editUser('${
-                                  user.id
-                                }', '${escapeHtml(user.email)}', '${roleDisplay}')">Edit</button>
-                                <button class="btn-small btn-delete" onclick="deleteUser('${
-                                  user.id
-                                }', '${escapeHtml(user.email)}')">Delete</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-    })
-    .join("");
-}
+  // Initialize (runs admin check and user load)
+  await adminPage.init();
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
+  // Expose instance
+  window.admin = adminPage;
 
-function showMessage(message, type = "success") {
-  const messageArea = document.getElementById("messageArea");
-  const className = type === "error" ? "error-message" : "success-message";
-  messageArea.innerHTML = `<div class="${className}">${escapeHtml(message)}</div>`;
-  setTimeout(() => {
-    messageArea.innerHTML = "";
-  }, 5000);
-}
-
-// Create User Functions
-function showCreateForm() {
-  document.getElementById("createUserForm").style.display = "block";
-  hideEditForm();
-}
-
-function hideCreateForm() {
-  document.getElementById("createUserForm").style.display = "none";
-  document.getElementById("createForm").reset();
-}
-
-async function handleCreateUser(event) {
-  event.preventDefault();
-  const email = document.getElementById("createEmail").value;
-  const password = document.getElementById("createPassword").value;
-  const role = document.getElementById("createRole").value;
-
-  try {
-    await window.api.createUser({ email, password, role });
-    showMessage(`User ${email} created successfully!`, "success");
-    hideCreateForm();
-    loadUsers();
-  } catch (error) {
-    showMessage(`Error creating user: ${error.message}`, "error");
-  }
-}
-
-// Edit User Functions
-function editUser(userId, email, currentRole) {
-  document.getElementById("editUserId").value = userId;
-  document.getElementById("editEmail").value = email;
-  document.getElementById("editRole").value = currentRole.includes("Admin") ? "Admin" : "User";
-
-  document.getElementById("editUserForm").classList.add("active");
-  hideCreateForm();
-  document.getElementById("editUserForm").scrollIntoView({ behavior: "smooth" });
-}
-
-function hideEditForm() {
-  document.getElementById("editUserForm").classList.remove("active");
-  document.getElementById("editForm").reset();
-}
-
-async function handleUpdateUser(event) {
-  event.preventDefault();
-  const userId = document.getElementById("editUserId").value;
-  const email = document.getElementById("editEmail").value;
-  const role = document.getElementById("editRole").value;
-
-  try {
-    await window.api.updateUser(userId, { email, role });
-    showMessage(`User updated successfully!`, "success");
-    hideEditForm();
-    loadUsers();
-  } catch (error) {
-    showMessage(`Error updating user: ${error.message}`, "error");
-  }
-}
-
-// Delete User Function
-async function deleteUser(userId, email) {
-  if (!confirm(`Are you sure you want to delete user "${email}"? This action cannot be undone.`)) {
-    return;
-  }
-
-  try {
-    await window.api.deleteUser(userId);
-    showMessage(`User ${email} deleted successfully!`, "success");
-    loadUsers();
-  } catch (error) {
-    showMessage(`Error deleting user: ${error.message}`, "error");
-  }
-}
-
-// Promote/Demote Functions
-async function promoteUser(userId) {
-  try {
-    await window.api.promoteToAdmin(userId);
-    showMessage("User promoted to Admin successfully!", "success");
-    loadUsers();
-  } catch (error) {
-    showMessage(`Error promoting user: ${error.message}`, "error");
-  }
-}
-
-async function demoteUser(userId) {
-  if (!confirm("Are you sure you want to demote this user from Admin to User?")) {
-    return;
-  }
-
-  try {
-    await window.api.demoteToUser(userId);
-    showMessage("User demoted to User role successfully!", "success");
-    loadUsers();
-  } catch (error) {
-    showMessage(`Error demoting user: ${error.message}`, "error");
-  }
-}
-
-// Expose functions explicitly on window.admin for reliable access from HTML onclicks
-// and other scripts. This makes the module usable both as a script tag and when
-// referenced from other JS files.
-window.admin = {
-  isAdminUser,
-  loadUsers,
-  renderUsers,
-  escapeHtml,
-  showMessage,
-  showCreateForm,
-  hideCreateForm,
-  handleCreateUser,
-  editUser,
-  hideEditForm,
-  handleUpdateUser,
-  deleteUser,
-  promoteUser,
-  demoteUser,
-};
+  // Backwards-compatible global functions (so inline onclicks keep working)
+  window.isAdminUser = adminPage.isAdminUser;
+  window.loadUsers = adminPage.loadUsers;
+  window.renderUsers = adminPage.renderUsers;
+  window.escapeHtml = adminPage.escapeHtml;
+  window.showMessage = adminPage.showMessage;
+  window.showCreateForm = adminPage.showCreateForm;
+  window.hideCreateForm = adminPage.hideCreateForm;
+  window.handleCreateUser = adminPage.handleCreateUser;
+  window.editUser = adminPage.editUser;
+  window.hideEditForm = adminPage.hideEditForm;
+  window.handleUpdateUser = adminPage.handleUpdateUser;
+  window.deleteUser = adminPage.deleteUser;
+  window.promoteUser = adminPage.promoteUser;
+  window.demoteUser = adminPage.demoteUser;
+});

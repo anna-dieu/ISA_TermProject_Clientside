@@ -1,13 +1,17 @@
-// navbar-loader.js
-document.addEventListener("DOMContentLoaded", () => {
-  const container = document.getElementById("navbar-container");
-  if (!container) return;
+// navbar-loader.js -> refactored to NavBarLoader class
+class NavBarLoader {
+  constructor(containerId = "navbar-container", opts = {}) {
+    this.container = document.getElementById(containerId);
+    this.attempts = 0;
+    this.maxAttempts = opts.maxAttempts || 10;
+    this.pollInterval = opts.pollInterval || 100;
+  }
 
-  // Determine which navbar to load based on user role
-  function loadNavbar() {
-    let navbarFile = "navbar.html"; // default for regular users
+  async loadNavbar() {
+    if (!this.container) return;
 
-    // Check if user is admin via authClient
+    let navbarFile = "navbar.html";
+
     if (window.authClient) {
       try {
         const user = window.authClient.getUser();
@@ -19,22 +23,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Fetch and insert the appropriate navbar
-    fetch(navbarFile)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Failed to load ${navbarFile}`);
-        return response.text();
-      })
-      .then((html) => {
-        container.innerHTML = html;
-        initAuthLink();
-      })
-      .catch((err) => console.error("Navbar load error:", err));
+    try {
+      const response = await fetch(navbarFile);
+      if (!response.ok) throw new Error(`Failed to load ${navbarFile}`);
+      const html = await response.text();
+      this.container.innerHTML = html;
+      this.initAuthLink();
+    } catch (err) {
+      console.error("Navbar load error:", err);
+    }
   }
 
-  // Initialize the auth link (Login/Logout) based on authentication state
-  function initAuthLink() {
-    const authLink = container.querySelector(".auth-link") || document.querySelector(".auth-link");
+  initAuthLink() {
+    let authLink = this.container.querySelector(".auth-link");
+    if (!authLink) authLink = document.querySelector(".auth-link");
     if (!authLink) return;
 
     if (window.authClient && window.authClient.isAuthenticated()) {
@@ -50,23 +52,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // If authClient is already available, load navbar immediately
-  if (window.authClient) {
-    loadNavbar();
-  } else {
-    // Wait briefly for authClient to be available, then load navbar
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    const checkAuthClient = () => {
-      if (window.authClient || attempts >= maxAttempts) {
-        loadNavbar();
-      } else {
-        attempts++;
-        setTimeout(checkAuthClient, 100);
-      }
-    };
-
-    checkAuthClient();
+  checkAuthClient() {
+    if (window.authClient || this.attempts >= this.maxAttempts) {
+      this.loadNavbar();
+      return;
+    }
+    this.attempts += 1;
+    setTimeout(() => this.checkAuthClient(), this.pollInterval);
   }
+
+  init() {
+    if (!this.container) return;
+    if (window.authClient) {
+      this.loadNavbar();
+    } else {
+      this.checkAuthClient();
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const loader = new NavBarLoader();
+  window.navbarLoader = loader;
+  loader.init();
 });
