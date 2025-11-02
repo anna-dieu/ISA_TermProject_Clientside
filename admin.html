@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard - User Management</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 24px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .admin-header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #052e46;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #fecaca;
+        }
+
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #a7f3d0;
+        }
+
+        .users-table-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(3,7,18,0.06);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .users-table thead {
+            background: #f8fafc;
+            border-bottom: 2px solid #e6eef6;
+        }
+
+        .users-table th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #052e46;
+            font-size: 14px;
+        }
+
+        .users-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e6eef6;
+            color: #0f172a;
+        }
+
+        .users-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-badge.admin {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .role-badge.user {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-edit {
+            background: #f1f5f9;
+            color: #0369a1;
+            border: 1px solid #e6eef6;
+        }
+
+        .btn-edit:hover {
+            background: #e0e7ef;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        .btn-promote {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .btn-promote:hover {
+            background: #bfdbfe;
+        }
+
+        .btn-demote {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .btn-demote:hover {
+            background: #fde68a;
+        }
+
+        .create-user-form {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(3,7,18,0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #052e46;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e6eef6;
+            font-size: 14px;
+            color: #0f172a;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0369a1;
+            box-shadow: 0 0 0 3px rgba(3,105,161,0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .edit-form {
+            display: none;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(3,7,18,0.06);
+            padding: 24px;
+            margin-top: 16px;
+        }
+
+        .edit-form.active {
+            display: block;
+        }
+
+        .access-denied {
+            text-align: center;
+            padding: 60px 20px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(3,7,18,0.06);
+            margin: 40px auto;
+            max-width: 600px;
+        }
+
+        .access-denied h2 {
+            color: #991b1b;
+            margin-bottom: 16px;
+        }
+
+        .access-denied p {
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="admin-container">
+        <!-- Admin Content (hidden by default) -->
+        <div id="adminContent" style="display: none;">
+            <div class="admin-header">
+                <h1>User Management</h1>
+                <button class="btn btn-primary" onclick="showCreateForm()">+ Create New User</button>
+            </div>
+
+            <div id="messageArea"></div>
+
+            <!-- Create User Form -->
+            <div id="createUserForm" class="create-user-form" style="display: none;">
+                <h2 style="margin-top: 0; margin-bottom: 20px; color: #052e46;">Create New User</h2>
+                <form id="createForm" onsubmit="handleCreateUser(event)">
+                    <div class="form-group">
+                        <label for="createEmail">Email:</label>
+                        <input type="email" id="createEmail" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="createPassword">Password:</label>
+                        <input type="password" id="createPassword" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="createRole">Role:</label>
+                        <select id="createRole">
+                            <option value="User">User</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="hideCreateForm()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Edit User Form (inline) -->
+            <div id="editUserForm" class="edit-form">
+                <h2 style="margin-top: 0; margin-bottom: 20px; color: #052e46;">Edit User</h2>
+                <form id="editForm" onsubmit="handleUpdateUser(event)">
+                    <input type="hidden" id="editUserId" />
+                    <div class="form-group">
+                        <label for="editEmail">Email:</label>
+                        <input type="email" id="editEmail" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="editRole">Role:</label>
+                        <select id="editRole">
+                            <option value="User">User</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="hideEditForm()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update User</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Users Table -->
+            <div class="users-table-container">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="4" class="loading">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Access Denied (shown if not admin) -->
+        <div id="accessDenied" class="access-denied">
+            <h2>Access Denied</h2>
+            <p>You must be logged in as an administrator to access this page.</p>
+            <a href="login.html" class="btn btn-primary">Go to Login</a>
+        </div>
+    </div>
+
+    <script src="./config.js"></script>
+    <script src="./navbar-loader.js"></script>
+    <script src="./auth-client.js"></script>
+    <script src="./api-client.js"></script>
+    <script>
+        // Check if user is admin by verifying with backend API
+        async function isAdminUser() {
+            // Check if user has token
+            const token = localStorage.getItem('auth_token') || localStorage.getItem('ai_chat_token');
+            console.log('isAdminUser: Checking token...', token ? 'Token found' : 'No token');
+            
+            if (!token) {
+                console.log('isAdminUser: No token found');
+                return false;
+            }
+
+            try {
+                // Try to get current user info from backend
+                const headers = { 'Content-Type': 'application/json' };
+                headers['Authorization'] = `Bearer ${token}`;
+                
+                const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5157';
+                const url = `${apiBase}/api/user/me`;
+                console.log('isAdminUser: Fetching from', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers
+                });
+
+                console.log('isAdminUser: Response status', response.status, response.statusText);
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    console.log('isAdminUser: Current user data received:', userData);
+                    console.log('isAdminUser: User roles:', userData.roles);
+                    
+                    // Check if user has Admin role
+                    const isAdmin = userData.roles && userData.roles.includes('Admin');
+                    console.log('isAdminUser: Is admin?', isAdmin);
+                    
+                    // Store user data with roles
+                    if (userData) {
+                        localStorage.setItem('ai_chat_user', JSON.stringify(userData));
+                    }
+                    
+                    return isAdmin;
+                } else {
+                    // Try to get error details
+                    const errorText = await response.text();
+                    console.error('isAdminUser: Failed to get user info:', response.status, errorText);
+                    
+                    // If 401 or 403, try alternative check - maybe try to access admin endpoint
+                    if (response.status === 401 || response.status === 403) {
+                        console.log('isAdminUser: Got 401/403, trying admin endpoint as fallback...');
+                        // Try to access admin users endpoint - if it works, user is admin
+                        try {
+                            const adminResponse = await fetch(`${apiBase}/api/admin/AdminUsers`, {
+                                method: 'GET',
+                                headers
+                            });
+                            console.log('isAdminUser: Admin endpoint response:', adminResponse.status);
+                            if (adminResponse.ok || adminResponse.status === 200) {
+                                return true;
+                            }
+                        } catch (e) {
+                            console.error('isAdminUser: Error checking admin endpoint:', e);
+                        }
+                    }
+                    return false;
+                }
+            } catch (error) {
+                console.error('isAdminUser: Error checking admin status:', error);
+                // Fallback: check stored user data for admin email (backward compatibility)
+                const userData = localStorage.getItem('ai_chat_user');
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        const email = user.email || user.userName || '';
+                        console.log('isAdminUser: Fallback check for email:', email);
+                        // Fallback to hardcoded check if API fails
+                        const isHardcodedAdmin = email === 'admin@admin.com' || email === 'aa@aa.aa' || email === 'john@john.com';
+                        console.log('isAdminUser: Hardcoded check result:', isHardcodedAdmin);
+                        return isHardcodedAdmin;
+                    } catch (e) {
+                        console.error('isAdminUser: Error parsing user data:', e);
+                    }
+                }
+                return false;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait a bit for scripts to load
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Check for token first
+            const token = localStorage.getItem('auth_token') || localStorage.getItem('ai_chat_token');
+            console.log('Token check:', {
+                auth_token: localStorage.getItem('auth_token') ? 'found' : 'missing',
+                ai_chat_token: localStorage.getItem('ai_chat_token') ? 'found' : 'missing',
+                authClient: window.authClient ? 'exists' : 'missing',
+                tokenFromAuthClient: window.authClient?.getToken?.() ? 'found' : 'missing'
+            });
+            
+            // Check admin status (this is now async)
+            const isAdmin = await isAdminUser();
+            console.log('Admin check result:', isAdmin);
+            
+            if (isAdmin) {
+                // Show admin content
+                document.getElementById('adminContent').style.display = 'block';
+                document.getElementById('accessDenied').style.display = 'none';
+                // Load users
+                loadUsers();
+            } else {
+                // Show access denied
+                document.getElementById('adminContent').style.display = 'none';
+                document.getElementById('accessDenied').style.display = 'block';
+                
+                // If no token, suggest login
+                if (!token) {
+                    document.getElementById('accessDenied').innerHTML = `
+                        <h2>Not Logged In</h2>
+                        <p>You must be logged in as an administrator to access this page.</p>
+                        <a href="login.html" class="btn btn-primary">Go to Login</a>
+                    `;
+                } else {
+                    document.getElementById('accessDenied').innerHTML = `
+                        <h2>Access Denied</h2>
+                        <p>You do not have administrator privileges. Only users with Admin role can access this page.</p>
+                        <a href="index.html" class="btn btn-primary">Go to Chat</a>
+                    `;
+                }
+            }
+        });
+
+        const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5157';
+        const api = new APIClient(apiBase);
+
+        async function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            try {
+                // Ensure authClient is initialized
+                if (!window.authClient) {
+                    console.error('authClient not initialized');
+                    throw new Error('Authentication client not available');
+                }
+
+                // Get token directly from localStorage as fallback
+                const token = window.authClient.getToken() || 
+                             localStorage.getItem('auth_token') || 
+                             localStorage.getItem('ai_chat_token');
+                
+                if (!token) {
+                    console.error('No authentication token found');
+                    tbody.innerHTML = `<tr><td colspan="4" class="loading">Please log in to view users.</td></tr>`;
+                    showMessage('You must be logged in to view users. Please log in and try again.', 'error');
+                    return;
+                }
+
+                console.log('Loading users with token:', token ? 'Token found' : 'No token');
+                
+                const users = await api.getUsers();
+                console.log('Users loaded:', users);
+                renderUsers(users);
+            } catch (error) {
+                console.error('Error loading users:', error);
+                const errorMsg = error.message || 'Unknown error occurred';
+                tbody.innerHTML = `<tr><td colspan="4" class="loading">Error loading users: ${escapeHtml(errorMsg)}</td></tr>`;
+                showMessage(`Error: ${errorMsg}`, 'error');
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => {
+                const roles = user.roles || [];
+                const isAdmin = roles.includes('Admin');
+                const roleDisplay = roles.length > 0 ? roles.join(', ') : 'User';
+                const roleBadgeClass = isAdmin ? 'admin' : 'user';
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>${escapeHtml(user.userName)}</td>
+                        <td>
+                            <span class="role-badge ${roleBadgeClass}">${escapeHtml(roleDisplay)}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                ${!isAdmin ? `<button class="btn-small btn-promote" onclick="promoteUser('${user.id}')">Promote to Admin</button>` : ''}
+                                ${isAdmin ? `<button class="btn-small btn-demote" onclick="demoteUser('${user.id}')">Demote to User</button>` : ''}
+                                <button class="btn-small btn-edit" onclick="editUser('${user.id}', '${escapeHtml(user.email)}', '${roleDisplay}')">Edit</button>
+                                <button class="btn-small btn-delete" onclick="deleteUser('${user.id}', '${escapeHtml(user.email)}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageArea = document.getElementById('messageArea');
+            const className = type === 'error' ? 'error-message' : 'success-message';
+            messageArea.innerHTML = `<div class="${className}">${escapeHtml(message)}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        // Create User Functions
+        function showCreateForm() {
+            document.getElementById('createUserForm').style.display = 'block';
+            hideEditForm();
+        }
+
+        function hideCreateForm() {
+            document.getElementById('createUserForm').style.display = 'none';
+            document.getElementById('createForm').reset();
+        }
+
+        async function handleCreateUser(event) {
+            event.preventDefault();
+            const email = document.getElementById('createEmail').value;
+            const password = document.getElementById('createPassword').value;
+            const role = document.getElementById('createRole').value;
+
+            try {
+                await api.createUser({ email, password, role });
+                showMessage(`User ${email} created successfully!`, 'success');
+                hideCreateForm();
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error creating user: ${error.message}`, 'error');
+            }
+        }
+
+        // Edit User Functions
+        function editUser(userId, email, currentRole) {
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('editRole').value = currentRole.includes('Admin') ? 'Admin' : 'User';
+            
+            document.getElementById('editUserForm').classList.add('active');
+            hideCreateForm();
+            document.getElementById('editUserForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideEditForm() {
+            document.getElementById('editUserForm').classList.remove('active');
+            document.getElementById('editForm').reset();
+        }
+
+        async function handleUpdateUser(event) {
+            event.preventDefault();
+            const userId = document.getElementById('editUserId').value;
+            const email = document.getElementById('editEmail').value;
+            const role = document.getElementById('editRole').value;
+
+            try {
+                await api.updateUser(userId, { email, role });
+                showMessage(`User updated successfully!`, 'success');
+                hideEditForm();
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error updating user: ${error.message}`, 'error');
+            }
+        }
+
+        // Delete User Function
+        async function deleteUser(userId, email) {
+            if (!confirm(`Are you sure you want to delete user "${email}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                await api.deleteUser(userId);
+                showMessage(`User ${email} deleted successfully!`, 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error deleting user: ${error.message}`, 'error');
+            }
+        }
+
+        // Promote/Demote Functions
+        async function promoteUser(userId) {
+            try {
+                await api.promoteToAdmin(userId);
+                showMessage('User promoted to Admin successfully!', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error promoting user: ${error.message}`, 'error');
+            }
+        }
+
+        async function demoteUser(userId) {
+            if (!confirm('Are you sure you want to demote this user from Admin to User?')) {
+                return;
+            }
+
+            try {
+                await api.demoteToUser(userId);
+                showMessage('User demoted to User role successfully!', 'success');
+                loadUsers();
+            } catch (error) {
+                showMessage(`Error demoting user: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -123,13 +123,41 @@
                     // Disable form while redirecting
                     loginForm.querySelectorAll('input, button').forEach(el => el.disabled = true);
                     
-                    // Add a slight delay to ensure token is saved
+                    // Try to get user info including roles from backend
+                    try {
+                        const token = response.token || localStorage.getItem('auth_token') || localStorage.getItem('ai_chat_token');
+                        if (token) {
+                            const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5157';
+                            const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (userInfoResponse.ok) {
+                                const userInfo = await userInfoResponse.json();
+                                // Store user data with roles
+                                localStorage.setItem('ai_chat_user', JSON.stringify(userInfo));
+                                console.log('User info stored:', userInfo);
+                                
+                                // Redirect based on role
+                                if (userInfo.roles && userInfo.roles.includes('Admin')) {
+                                    window.location.href = './admin.html';
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching user info:', error);
+                    }
+                    
+                    // Fallback: redirect based on email (backward compatibility)
                     setTimeout(() => {
-                        // For admin, redirect to admin dashboard
-                        if (email === 'admin@admin.com') {
-                            window.location.href = './index.html#/dashboard';
+                        if (email === 'admin@admin.com' || email === 'aa@aa.aa' || email === 'john@john.com') {
+                            window.location.href = './admin.html';
                         } else {
-                            // For regular users, redirect to chat
                             window.location.href = './index.html#/chat';
                         }
                     }, 100);

@@ -6,7 +6,7 @@
 class AuthClient {
     constructor() {
         // Base URL for backend API (update this if port changes)
-        this.baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'https://localhost:5157';
+        this.baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || 'http://localhost:5157';
 
         // Storage keys for tokens and user data
         this.storagePrefix = 'ai_chat_';
@@ -89,8 +89,19 @@ class AuthClient {
      */
     _extractTokenFromResponse(resp) {
         if (!resp) return null;
+        // ASP.NET Identity API can return token in various formats
+        // Try resp.data first, then resp directly
         const d = resp.data || resp || {};
-        return d.token || d.accessToken || d.access_token || d.jwt || d.value?.token || null;
+        
+        // Try common token property names
+        return d.token || 
+               d.accessToken || 
+               d.access_token || 
+               d.jwt || 
+               d.bearerToken ||
+               d.value?.token ||
+               (typeof d === 'string' ? d : null) || // If response is just a string token
+               null;
     }
 
     // -------------------------------------------------------------------
@@ -109,19 +120,47 @@ class AuthClient {
         const headers = { 'Content-Type': 'application/json' };
 
         const res = await this._fetchRaw(endpoint, { method: 'POST', headers, body });
+        
+        console.log('Login raw response:', res);
+        console.log('Login response data:', res.data);
+        console.log('Login response status:', res.status);
+        
         if (!res || !res.ok) {
             console.warn('Login failed:', res);
-            return { success: false, message: 'Invalid email or password' };
+            // Try to get more details from error response
+            let errorMsg = 'Invalid email or password';
+            if (res.data) {
+                if (res.data.errors) {
+                    errorMsg = Object.values(res.data.errors).flat().join(', ');
+                } else if (res.data.message) {
+                    errorMsg = res.data.message;
+                }
+            }
+            return { success: false, message: errorMsg };
         }
 
-        const token = this._extractTokenFromResponse(res.data);
+        // ASP.NET Identity API may return token in response.data or directly
+        let token = this._extractTokenFromResponse(res.data);
+        
+        // If token not found, try the raw response
+        if (!token && res.data && typeof res.data === 'object') {
+            // Try accessing properties directly
+            token = res.data.token || res.data.accessToken || res.data.bearerToken;
+        }
+        
+        console.log('Extracted token:', token ? 'Token found (' + token.substring(0, 20) + '...)' : 'No token');
+        console.log('Full response structure:', JSON.stringify(res.data, null, 2));
+        
         if (token) {
-            const user = res.data.user || { email };
+            const user = res.data?.user || { email, userName: email };
             this.setAuthData({ token, user });
+            console.log('Auth data saved:', { token: token.substring(0, 20) + '...', user });
             return { success: true, token, user };
         }
 
-        return { success: false, message: 'Login failed: No token returned' };
+        // If no token in response, check if login was successful but token is missing
+        console.error('Login response (no token):', res.data);
+        return { success: false, message: 'Login failed: No token returned. Response: ' + JSON.stringify(res.data) };
     }
 
     // -------------------------------------------------------------------
@@ -181,3 +220,4 @@ class AuthClient {
 
 // Create a global instance
 const authClient = new AuthClient();
+window.authClient = authClient; // Expose globally
