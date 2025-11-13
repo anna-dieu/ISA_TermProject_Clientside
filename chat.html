@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="CSS/styles.css" />
+    <link rel="stylesheet" href="CSS/chat.css" />
+    <title>Chat Window</title>
+  </head>
+  <body>
+    <!-- Navbar will be injected into this container by JS -->
+    <div id="navbar-container"></div>
+
+    <div id="chatContainer" class="chat-wrapper">
+      <div id="sidebar">
+        <h3>Available Users</h3>
+        <ul id="userList"></ul>
+      </div>
+
+      <div id="chatArea" class="hidden">
+        <h2 id="chatTitle">Select a user to chat</h2>
+        <!-- Where messages will be displayed -->
+        <ul id="messagesList" class="chat-list"></ul>
+
+        <div id="messageInputArea">
+          <input id="messageInput" type="text" placeholder="Type a message..." />
+          <button id="sendButton" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="JS/auth-client.js"></script>
+    <script src="JS/navbar-loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="JS/chat.js"></script>
+  </body>
+</html>

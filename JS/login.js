@@ -96,13 +96,13 @@ class LoginPage {
         }
 
         // Fallback redirect
-        setTimeout(() => {
-          if (email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com") {
-            window.location.href = "./admin.html";
-          } else {
-            window.location.href = "./index.html#/chat";
-          }
-        }, 100);
+        // setTimeout(() => {
+        //   if (email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com") {
+        //     window.location.href = "./admin.html";
+        //   } else {
+        //     window.location.href = "./index.html#/chat";
+        //   }
+        // }, 100);
       } else {
         console.log("Login failed:", response.message);
         if (this.errorMessage) {
