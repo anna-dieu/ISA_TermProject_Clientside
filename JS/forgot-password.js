@@ -1,37 +1,70 @@
-const forgotPasswordForm = document.getElementById("forgotPasswordForm");
-const messageDiv = document.getElementById("message");
-const errorDiv = document.getElementById("errorMessage");
+class ForgotPasswordPage {
+  constructor(authClient) {
+    this.authClient = authClient;
+    this.form = document.getElementById("forgotPasswordForm");
+    this.messageDiv = document.getElementById("message");
+    this.errorDiv = document.getElementById("errorMessage");
+    this.emailInput = document.getElementById("email");
+    this.submitBtn = null;
 
-forgotPasswordForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const email = document.getElementById("email").value;
-
-  // Hide previous messages
-  messageDiv.style.display = "none";
-  errorDiv.style.display = "none";
-
-  // Disable submit button during request
-  const submitBtn = forgotPasswordForm.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Sending...";
-
-  try {
-    const response = await authClient.sendPasswordReset(email);
-
-    if (response.success) {
-      messageDiv.textContent = response.message || "Password reset link sent! Check your email.";
-      messageDiv.style.display = "block";
-      forgotPasswordForm.reset();
-    } else {
-      errorDiv.textContent = response.message || "Failed to send reset link. Please try again.";
-      errorDiv.style.display = "block";
-    }
-  } catch (error) {
-    errorDiv.textContent = "An error occurred. Please try again.";
-    errorDiv.style.display = "block";
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Send Reset Link";
+    this._initialize();
   }
-});
+
+  _initialize() {
+    if (this.form) {
+      this.submitBtn = this.form.querySelector('button[type="submit"]');
+      this.form.addEventListener("submit", (e) => this._handleSubmit(e));
+    }
+  }
+
+  _showMessage(message, isError = false) {
+    this.messageDiv.style.display = "none";
+    this.errorDiv.style.display = "none";
+
+    if (isError) {
+      this.errorDiv.textContent = message;
+      this.errorDiv.style.display = "block";
+    } else {
+      this.messageDiv.textContent = message;
+      this.messageDiv.style.display = "block";
+    }
+  }
+
+  _setLoading(isLoading) {
+    if (this.submitBtn) {
+      this.submitBtn.disabled = isLoading;
+      this.submitBtn.textContent = isLoading ? "Sending..." : "Send Reset Link";
+    }
+  }
+
+  async _handleSubmit(e) {
+    e.preventDefault();
+
+    const email = this.emailInput.value.trim();
+    if (!email) {
+      this._showMessage("Please enter your email address.", true);
+      return;
+    }
+
+    this._showMessage("", false); // Clear previous messages
+    this._setLoading(true);
+
+    try {
+      const response = await this.authClient.sendPasswordReset(email);
+
+      if (response.success) {
+        this._showMessage(response.message || "Password reset link sent! Check your email.", false);
+        this.form.reset();
+      } else {
+        this._showMessage(response.message || "Failed to send reset link. Please try again.", true);
+      }
+    } catch (error) {
+      this._showMessage("An error occurred. Please try again.", true);
+    } finally {
+      this._setLoading(false);
+    }
+  }
+}
+
+// Initialize the page
+const forgotPasswordPage = new ForgotPasswordPage(authClient);
