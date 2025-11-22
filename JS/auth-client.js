@@ -307,6 +307,32 @@ class AuthClient {
       return { success: false, message: e?.message || String(e), calls: 0 };
     }
   }
+
+  /**
+   * Send password reset email
+   * @param {string} email - User's email address
+   * @returns {Promise<{success: boolean, message?: string}>}
+   */
+  async sendPasswordReset(email) {
+    try {
+      const res = await fetch(this.baseUrl + "/api/account/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (res.ok) {
+        return { success: true, message: "Password reset link sent to your email" };
+      } else {
+        const errorText = await res.text();
+        return { success: false, message: errorText || "Failed to send reset link" };
+      }
+    } catch (e) {
+      return { success: false, message: e?.message || "Network error" };
+    }
+  }
 }
 
 // Expose a global instance for pages that load this file with a plain <script> tag
