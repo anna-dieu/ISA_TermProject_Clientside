@@ -72,6 +72,9 @@ function openChat(user) {
   const chatTitle = document.getElementById("chatTitle");
   const sendButton = document.getElementById("sendButton");
   const messageInput = document.getElementById("messageInput");
+  const mcpBtn = document.getElementById("mcpBtn");
+  const sendPolishedBtn = document.getElementById("sendPolishedBtn");
+
 
   chatArea.classList.remove("hidden");
   chatTitle.textContent = `Chat with ${user.userName}`;
@@ -292,3 +295,71 @@ discardAiBtn.addEventListener("click", () => {
   aiResponseArea.classList.add("hidden");
   aiResponse.value = "";
 });
+
+async function messageMCP(text, tone) {
+  const token =
+    window.authClient?.getToken?.() ||
+    localStorage.getItem("auth_token");
+
+  const response = await fetch(`${apiBase}/api/OpenAi/rewrite`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({
+      userText: text,
+      tone: tone
+    }),
+  });
+
+  if (!response.ok) {
+    console.error("MCP error:", response.status);
+    throw new Error(`MCP failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  return data.rewrittenText;
+}
+
+mcpBtn.addEventListener("click", async () => {
+  const text = messageInputField.value.trim();
+  if (!text) return;
+  if (!selectedUserId) return alert("Select a user first.");
+
+  const tone = toneSelect.value;
+
+  try {
+    // 1️⃣ Send user message first
+    connection.invoke("SendPrivateMessage", selectedUserId, text);
+
+    // 2️⃣ Ask MCP
+    const reply = await messageMCP(text, tone);
+
+    // 3️⃣ Send MCP reply to chat as if MCP was another user
+    connection.invoke("SendPrivateMessage", selectedUserId, reply);
+
+    // clear input
+    messageInputField.value = "";
+  } catch (err) {
+    console.error("MCP message failed:", err);
+  }
+});
+
+sendPolishedBtn.addEventListener("click", () => {
+  const polishedText = aiResponse.value.trim();
+
+  if (!polishedText) return;
+  if (!selectedUserId) return alert("Select a user first.");
+
+  // Send polished text to private chat
+  connection
+    .invoke("SendPrivateMessage", selectedUserId, polishedText)
+    .catch((err) => console.error("Polished Send failed:", err));
+
+  // Hide AI area + clear
+  aiResponseArea.classList.add("hidden");
+  aiResponse.value = "";
+  messageInputField.value = "";
+});
+
