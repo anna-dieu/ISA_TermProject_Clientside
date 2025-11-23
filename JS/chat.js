@@ -1,12 +1,25 @@
 "use strict";
 
-const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
+/* ============================================================
+   CONFIG
+============================================================ */
+const apiBase =
+  (window.APP_CONFIG && window.APP_CONFIG.API_BASE) ||
+  "http://localhost:5157";
 
+const API_BASE_URL = apiBase;
+
+/* ============================================================
+   GLOBAL STATE
+============================================================ */
 let selectedUserId = null;
 
+/* ============================================================
+   LOAD USER LIST
+============================================================ */
 async function loadUsers() {
   const token =
-    (window.authClient && window.authClient.getToken && window.authClient.getToken()) ||
+    (window.authClient?.getToken?.()) ||
     localStorage.getItem("auth_token") ||
     null;
 
@@ -18,32 +31,20 @@ async function loadUsers() {
     });
 
     if (!res.ok) {
-      if (res.status === 401) {
-        console.warn(
-          "Unauthorized fetching users (401). User may not be logged in or token expired."
-        );
-        // Optionally redirect to login page or show a message to the user
-        // window.location.href = 'login.html';
-      } else {
-        console.warn("Failed to fetch users:", res.status);
-      }
+      console.warn("Failed to fetch users:", res.status);
       return;
     }
 
-    // Only parse JSON for OK responses to avoid "Unexpected end of JSON input"
     const users = await res.json();
     const list = document.getElementById("userList");
     list.innerHTML = "";
 
-    // Determine current user's userName (if available) so we can skip listing ourselves
-    const currentUserObj =
-      (window.authClient && window.authClient.getUser && window.authClient.getUser()) || null;
-    const currentUserName =
-      currentUserObj &&
-      (currentUserObj.userName || currentUserObj.username || currentUserObj.email);
+    // Get current logged-in user
+    const me = window.authClient?.getUser?.() || null;
+    const currentUserName = me?.userName || me?.username || me?.email;
 
+    // Populate other users
     users.forEach((u) => {
-      // Skip current user in the list
       if (currentUserName && u.userName === currentUserName) return;
 
       const li = document.createElement("li");
@@ -52,11 +53,18 @@ async function loadUsers() {
       li.addEventListener("click", () => openChat(u));
       list.appendChild(li);
     });
+
   } catch (err) {
     console.error("Failed to load users:", err);
   }
 }
 
+// Load users on startup
+loadUsers();
+
+/* ============================================================
+   OPEN CHAT WITH SELECTED USER
+============================================================ */
 function openChat(user) {
   selectedUserId = user.id;
 
@@ -65,105 +73,44 @@ function openChat(user) {
   const sendButton = document.getElementById("sendButton");
   const messageInput = document.getElementById("messageInput");
 
-  // Unhide the chat area if hidden
   chatArea.classList.remove("hidden");
-
-  // Update title and clear messages
   chatTitle.textContent = `Chat with ${user.userName}`;
-  document.getElementById("messagesList").innerHTML = "";
-  loadConversation(user.id); // fetch and render messages
 
-  // Enable input and send button
+  document.getElementById("messagesList").innerHTML = "";
+  loadConversation(user.id);
+
   messageInput.disabled = false;
   sendButton.disabled = false;
-
-  console.log(`Chat opened with ${user.userName} (${user.id})`);
 }
 
-loadUsers();
-
-// Create a connection to your SignalR Hub endpoint
+/* ============================================================
+   SIGNALR SETUP
+============================================================ */
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(`${apiBase}/chatHub`, {
-    // Read token at request time. WebSocket/SSE transports must receive token via query string.
-    accessTokenFactory: () => {
-      const t =
-        (window.authClient && window.authClient.getToken && window.authClient.getToken()) ||
-        localStorage.getItem("auth_token") ||
-        null;
-      // Log presence (mask token for safety)
-      if (t) console.log("SignalR access token present: ", `${t.slice(0, 8)}...${t.slice(-8)}`);
-      else console.warn("SignalR access token missing");
-      return t;
-    },
-  }) // or your deployed backend URL
+    accessTokenFactory: () =>
+      window.authClient?.getToken?.() ||
+      localStorage.getItem("auth_token") ||
+      null,
+  })
   .withAutomaticReconnect()
   .build();
 
-// When server calls 'ReceiveMessage', show it
-connection.on("ReceiveMessage", (user, message) => {
-  const msgList = document.getElementById("messagesList");
-  const li = document.createElement("li");
-  li.classList.add("message");
-
-  // Determine if message was sent by current user (compare by name if id not available)
-  const isMine = user === window.currentUserName;
-  li.classList.add(isMine ? "sent" : "received");
-
-  if (!isMine) {
-    const nameDiv = document.createElement("div");
-    nameDiv.classList.add("sender-name");
-    nameDiv.textContent = user;
-    li.appendChild(nameDiv);
-  }
-
-  const textDiv = document.createElement("div");
-  textDiv.classList.add("message-text");
-  textDiv.textContent = message;
-  li.appendChild(textDiv);
-
-  msgList.appendChild(li);
-  msgList.scrollTop = msgList.scrollHeight;
-});
-
-// Load current user information (id and display name) so we can mark incoming messages
-async function loadCurrentUser() {
-  // Prefer already-stored user object
-  let me = window.authClient && window.authClient.getUser && window.authClient.getUser();
-
-  // If not available, try fetching from server via authClient.fetchUser()
-  if (!me && window.authClient && window.authClient.fetchUser) {
-    try {
-      me = await window.authClient.fetchUser();
-    } catch (e) {
-      console.warn("Could not fetch current user:", e);
-      me = null;
-    }
-  }
-
-  if (me) {
-    window.currentUserId = me.id || me.userId || null;
-    window.currentUserName = me.userName || me.username || me.email || "You";
-  } else {
-    window.currentUserId = null;
-    window.currentUserName = null;
-  }
-}
-
+/* ============================================================
+   RECEIVE PRIVATE MESSAGE
+============================================================ */
 connection.on("ReceivePrivateMessage", (fromUserName, message, fromUserId) => {
   const msgList = document.getElementById("messagesList");
   const li = document.createElement("li");
   li.classList.add("message");
 
-  // Prefer id comparison when available, fallback to name comparison
   const isMine =
-    typeof fromUserId !== "undefined" && fromUserId !== null
+    fromUserId != null
       ? fromUserId === window.currentUserId
       : fromUserName === window.currentUserName;
 
   li.classList.add(isMine ? "sent" : "received");
 
-  // Show sender label for received messages
   if (!isMine) {
     const nameDiv = document.createElement("div");
     nameDiv.classList.add("sender-name");
@@ -180,9 +127,28 @@ connection.on("ReceivePrivateMessage", (fromUserName, message, fromUserId) => {
   msgList.scrollTop = msgList.scrollHeight;
 });
 
-// Load current user first, then start the SignalR connection so handlers can use current user info
+/* ============================================================
+   LOAD CURRENT USER
+============================================================ */
+async function loadCurrentUser() {
+  let me = window.authClient?.getUser?.();
+
+  if (!me && window.authClient?.fetchUser) {
+    try {
+      me = await window.authClient.fetchUser();
+    } catch (e) {
+      console.warn("Could not fetch current user:", e);
+      me = null;
+    }
+  }
+
+  if (me) {
+    window.currentUserId = me.id || me.userId;
+    window.currentUserName = me.userName || me.username || me.email;
+  }
+}
+
 loadCurrentUser()
-  .catch((e) => console.warn("loadCurrentUser failed:", e))
   .then(() =>
     connection
       .start()
@@ -193,7 +159,9 @@ loadCurrentUser()
       .catch((err) => console.error("SignalR connection failed:", err))
   );
 
-// Send message
+/* ============================================================
+   SEND MESSAGE (BLUE SEND BUTTON)
+============================================================ */
 document.getElementById("sendButton").addEventListener("click", () => {
   const message = document.getElementById("messageInput").value.trim();
   if (!selectedUserId) return alert("Select a user first");
@@ -206,51 +174,121 @@ document.getElementById("sendButton").addEventListener("click", () => {
   document.getElementById("messageInput").value = "";
 });
 
+/* ============================================================
+   LOAD CONVERSATION HISTORY
+============================================================ */
 async function loadConversation(receiverId) {
   const token =
-    (window.authClient && (await window.authClient.getToken())) ||
+    window.authClient?.getToken?.() ||
     localStorage.getItem("auth_token") ||
     null;
 
-  if (!token) {
-    console.error("Missing auth token");
-    return;
+  const res = await fetch(`${apiBase}/api/message/${receiverId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) return;
+
+  const messages = await res.json();
+  const msgList = document.getElementById("messagesList");
+  msgList.innerHTML = "";
+
+  messages.forEach((m) => {
+    const li = document.createElement("li");
+    li.classList.add("message");
+
+    const isMine = m.senderId === window.currentUserId;
+    li.classList.add(isMine ? "sent" : "received");
+
+    const nameDiv = document.createElement("div");
+    nameDiv.classList.add("sender-name");
+    nameDiv.textContent = isMine ? window.currentUserName : m.senderName;
+    li.appendChild(nameDiv);
+
+    const textDiv = document.createElement("div");
+    textDiv.classList.add("message-text");
+    textDiv.textContent = m.content;
+    li.appendChild(textDiv);
+
+    msgList.appendChild(li);
+  });
+
+  msgList.scrollTop = msgList.scrollHeight;
+};
+
+/* ============================================================
+   POLISH FEATURE (MCP Rewrite API)
+============================================================ */
+
+// UI elements
+const polishBtn = document.getElementById("polishBtn");
+const toneSelect = document.getElementById("toneSelect");
+const aiResponseArea = document.getElementById("aiResponseArea");
+const aiResponse = document.getElementById("aiResponse");
+const sendAiBtn = document.getElementById("sendAiBtn");
+const discardAiBtn = document.getElementById("discardAiBtn");
+const messageInputField = document.getElementById("messageInput");
+
+// API call wrapper
+async function polishMessage(text, tone) {
+  const token =
+    window.authClient?.getToken?.() ||
+    localStorage.getItem("auth_token");
+
+  const response = await fetch(`${apiBase}/api/OpenAi/rewrite`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ userText: text, tone }),
+  });
+
+  if (!response.ok) {
+    console.error("Rewrite error:", response.status);
+    throw new Error(`Failed to polish message (${response.status})`);
   }
+
+  const data = await response.json();
+  return data.rewrittenText;
+}
+
+// Polish button
+polishBtn.addEventListener("click", async () => {
+  const text = messageInputField.value.trim();
+  if (!text) return;
+
+  const tone = toneSelect.value;
+
+  aiResponseArea.classList.remove("hidden");
+  aiResponse.value = "Polishing...";
 
   try {
-    const res = await fetch(`${apiBase}/api/message/${receiverId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      console.error("Failed to fetch messages:", res.status);
-      return;
-    }
-
-    const messages = await res.json();
-    const msgList = document.getElementById("messagesList");
-    msgList.innerHTML = "";
-
-    messages.forEach((m) => {
-      const li = document.createElement("li");
-      li.classList.add("message");
-
-      const isMine = m.senderId === window.currentUserId;
-      li.classList.add(isMine ? "sent" : "received");
-
-      const nameDiv = document.createElement("div");
-      nameDiv.classList.add("sender-name");
-      nameDiv.textContent = isMine ? window.currentUserName : m.senderName || "Unknown";
-      li.appendChild(nameDiv);
-
-      const textDiv = document.createElement("div");
-      textDiv.textContent = m.content;
-      li.appendChild(textDiv);
-
-      msgList.appendChild(li);
-    });
-    msgList.scrollTop = msgList.scrollHeight;
-  } catch (err) {
-    console.error("Error loading conversation:", err);
+    const polished = await polishMessage(text, tone);
+    aiResponse.value = polished;
+  } catch {
+    aiResponse.value = "Error polishing text.";
   }
-}
+});
+
+// Send AI Response
+sendAiBtn.addEventListener("click", () => {
+  const polishedText = aiResponse.value.trim();
+
+  if (!polishedText) return;
+  if (!selectedUserId) return alert("Select a user first.");
+
+  connection
+    .invoke("SendPrivateMessage", selectedUserId, polishedText)
+    .catch((err) => console.error("AI Send failed:", err));
+
+  aiResponseArea.classList.add("hidden");
+  aiResponse.value = "";
+  messageInputField.value = "";
+});
+
+// Discard AI Response
+discardAiBtn.addEventListener("click", () => {
+  aiResponseArea.classList.add("hidden");
+  aiResponse.value = "";
+});
