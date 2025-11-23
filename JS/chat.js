@@ -296,55 +296,37 @@ discardAiBtn.addEventListener("click", () => {
   aiResponse.value = "";
 });
 
-async function messageMCP(text, tone) {
-  const token =
-    window.authClient?.getToken?.() ||
-    localStorage.getItem("auth_token");
 
-  const response = await fetch(`${apiBase}/api/OpenAi/rewrite`, {
+async function messageMcp(text) {
+  const response = await fetch(`${apiBase}/Chat`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
-    body: JSON.stringify({
-      userText: text,
-      tone: tone
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(text),   // Backend expects raw string in JSON
   });
 
   if (!response.ok) {
-    console.error("MCP error:", response.status);
-    throw new Error(`MCP failed (${response.status})`);
+    throw new Error("MCP message failed");
   }
 
-  const data = await response.json();
-  return data.rewrittenText;
+  return await response.text();  // backend returns text/plain
 }
 
 mcpBtn.addEventListener("click", async () => {
   const text = messageInputField.value.trim();
   if (!text) return;
-  if (!selectedUserId) return alert("Select a user first.");
 
-  const tone = toneSelect.value;
+  aiResponseArea.classList.remove("hidden");
+  aiResponse.value = "Thinking (MCP)...";
 
   try {
-    // 1️⃣ Send user message first
-    connection.invoke("SendPrivateMessage", selectedUserId, text);
-
-    // 2️⃣ Ask MCP
-    const reply = await messageMCP(text, tone);
-
-    // 3️⃣ Send MCP reply to chat as if MCP was another user
-    connection.invoke("SendPrivateMessage", selectedUserId, reply);
-
-    // clear input
-    messageInputField.value = "";
-  } catch (err) {
-    console.error("MCP message failed:", err);
+    const reply = await messageMcp(text);
+    aiResponse.value = reply;
+  } catch (e) {
+    console.error(e);
+    aiResponse.value = "Error contacting MCP server.";
   }
 });
+
 
 sendPolishedBtn.addEventListener("click", () => {
   const polishedText = aiResponse.value.trim();
