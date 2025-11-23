@@ -2,6 +2,7 @@ class ResetPasswordPage {
   constructor() {
     this.form = document.getElementById("resetPasswordForm");
     this.messageDiv = document.getElementById("message");
+    this.errorDiv = document.getElementById("errorMessage");
     this.passwordInput = document.getElementById("password");
     this.confirmPasswordInput = document.getElementById("confirmPassword");
     this.apiBaseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
@@ -36,7 +37,7 @@ class ResetPasswordPage {
 
   _initialize() {
     if (!this.userId || !this.token) {
-      this._showMessage("Invalid reset link. Please request a new password reset.", "red");
+      this._showMessage("Invalid reset link. Please request a new password reset.", true);
       if (this.form) {
         this.form.style.display = "none";
       }
@@ -48,10 +49,24 @@ class ResetPasswordPage {
     }
   }
 
-  _showMessage(message, color = "black") {
+  _showMessage(message, isError = false) {
     if (this.messageDiv) {
-      this.messageDiv.textContent = message;
-      this.messageDiv.style.color = color;
+      this.messageDiv.style.display = "none";
+    }
+    if (this.errorDiv) {
+      this.errorDiv.style.display = "none";
+    }
+
+    if (isError) {
+      if (this.errorDiv) {
+        this.errorDiv.textContent = message;
+        this.errorDiv.style.display = "block";
+      }
+    } else {
+      if (this.messageDiv) {
+        this.messageDiv.textContent = message;
+        this.messageDiv.style.display = "block";
+      }
     }
   }
 
@@ -60,12 +75,12 @@ class ResetPasswordPage {
     const confirmPassword = this.confirmPasswordInput.value;
 
     if (password !== confirmPassword) {
-      this._showMessage("Passwords do not match.", "red");
+      this._showMessage("Passwords do not match.", true);
       return false;
     }
 
     if (password.length < 3) {
-      this._showMessage("Password must be at least 3 characters.", "red");
+      this._showMessage("Password must be at least 3 characters.", true);
       return false;
     }
 
@@ -100,16 +115,16 @@ class ResetPasswordPage {
       );
 
       if (response.ok) {
-        this._showMessage("Password reset successfully! Redirecting to login...", "green");
+        this._showMessage("Password reset successfully! Redirecting to login...", false);
         setTimeout(() => {
           window.location.href = "login.html";
         }, 2000);
       } else {
         const error = await response.text();
-        this._showMessage(`Failed to reset password: ${error}`, "red");
+        this._showMessage(`Failed to reset password: ${error}`, true);
       }
     } catch (error) {
-      this._showMessage(`Error: ${error.message}`, "red");
+      this._showMessage(`Error: ${error.message}`, true);
     }
   }
 }
