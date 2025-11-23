@@ -15,62 +15,51 @@
 
   <div id="chatContainer" class="chat-wrapper">
 
-    <!-- SIDEBAR -->
-    <div id="sidebar">
-      <h3>Available Users</h3>
-      <ul id="userList"></ul>
+    <!-- SIDEBAR - USER LIST -->
+    <div id="sidebar" class="sidebar">
+      <h3 class="sidebar-title">Available Users</h3>
+      <ul id="userList" class="user-list"></ul>
     </div>
 
     <!-- MAIN CHAT AREA -->
-    <div id="chatArea" class="hidden">
-      <h2 id="chatTitle">Select a user to chat</h2>
+    <div id="chatArea" class="chat-area hidden">
+      <div class="chat-header">
+        <h2 id="chatTitle">Select a user to chat</h2>
+      </div>
 
-      <!-- Message list -->
-      <ul id="messagesList" class="chat-list"></ul>
+      <!-- Messages Container -->
+      <div class="messages-container">
+        <ul id="messagesList" class="chat-list"></ul>
+      </div>
 
-      <!-- UNIFIED COMPOSER -->
-      <section class="composer">
+      <!-- UNIFIED COMPOSER (BOTTOM) -->
+      <section class="composer-section">
         <div id="chatMessageForm" class="message-form">
-
-          <div class="controls">
-            <!-- Tone dropdown -->
-            <select id="toneSelect" name="tone">
+          <div class="composer-controls">
+            <select id="toneSelect" name="tone" class="tone-select">
               <option value="professional" selected>Professional</option>
               <option value="educational">Educational</option>
               <option value="romantic">Romantic</option>
             </select>
 
-            <!-- ORIGINAL WORKING MESSAGE INPUT -->
-            <input id="messageInput" type="text" placeholder="Type a message..." required />
+            <input id="messageInput" type="text" class="message-input" placeholder="Type a message..." />
           </div>
 
-          <div class="actions">
-
-            <button id="mcpBtn" type="button" class="btn btn-secondary">
-              Message MCP
-            </button>
-
-
-            <button id="polishBtn" type="button" class="btn btn-secondary">
-              Polish
-            </button>
-
-            <!-- ORIGINAL WORKING SEND BUTTON (NO FORM SUBMIT) -->
-            <button id="sendButton" type="button" class="btn btn-primary">
-              Send
-            </button>
+          <div class="composer-actions">
+            <button id="mcpBtn" type="button" class="btn btn-secondary">Message MCP</button>
+            <button id="polishBtn" type="button" class="btn btn-secondary">Polish</button>
+            <button id="sendButton" type="button" class="btn btn-primary">Send</button>
           </div>
         </div>
 
-        <!-- AI RESPONSE SECTION -->
-        <div id="aiResponseArea" class="ai-response hidden">
-          <textarea id="aiResponse" readonly></textarea>
-
+        <!-- AI Response Section (BELOW COMPOSER CONTROLS) -->
+        <div id="aiResponseArea" class="ai-response-section hidden">
+          <div class="ai-response-header">AI Suggestion</div>
+          <textarea id="aiResponse" class="ai-response-textarea" readonly></textarea>
           <div class="ai-actions">
             <button id="sendAiBtn" class="btn btn-primary">Send AI Response</button>
             <button id="discardAiBtn" class="btn btn-secondary">Discard</button>
           </div>
-
         </div>
       </section>
     </div>
