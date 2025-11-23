@@ -48,8 +48,39 @@ async function loadUsers() {
       if (currentUserName && u.userName === currentUserName) return;
 
       const li = document.createElement("li");
-      li.textContent = u.userName;
+      li.className = "user-item";
       li.dataset.id = u.id;
+      
+      // Create status indicator
+      const statusDiv = document.createElement("div");
+      statusDiv.className = "user-status online"; // Always show online for now
+      
+      // Create user info container
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "user-info";
+      
+      // User name
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "user-name";
+      nameDiv.textContent = u.userName;
+      
+      // Chat preview (last message)
+      const previewDiv = document.createElement("div");
+      previewDiv.className = "user-preview";
+      previewDiv.textContent = "No messages yet";
+      
+      infoDiv.appendChild(nameDiv);
+      infoDiv.appendChild(previewDiv);
+      
+      // Create timestamp
+      const timeDiv = document.createElement("div");
+      timeDiv.className = "user-time";
+      timeDiv.textContent = ""; // Empty for now
+      
+      li.appendChild(statusDiv);
+      li.appendChild(infoDiv);
+      li.appendChild(timeDiv);
+      
       li.addEventListener("click", () => openChat(u));
       list.appendChild(li);
     });
