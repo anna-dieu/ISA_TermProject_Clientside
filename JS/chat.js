@@ -357,22 +357,3 @@ mcpBtn.addEventListener("click", async () => {
     aiResponse.value = "Error contacting MCP server.";
   }
 });
-
-
-sendPolishedBtn.addEventListener("click", () => {
-  const polishedText = aiResponse.value.trim();
-
-  if (!polishedText) return;
-  if (!selectedUserId) return alert("Select a user first.");
-
-  // Send polished text to private chat
-  connection
-    .invoke("SendPrivateMessage", selectedUserId, polishedText)
-    .catch((err) => console.error("Polished Send failed:", err));
-
-  // Hide AI area + clear
-  aiResponseArea.classList.add("hidden");
-  aiResponse.value = "";
-  messageInputField.value = "";
-});
-
