@@ -49,12 +49,16 @@ class LoginPage {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
+    console.log("=== LOGIN ATTEMPT ===");
+    console.log("Email:", email);
+    console.log("Config:", window.APP_CONFIG);
+
     try {
       const response = await this.authClient.login(email, password);
       console.log("Login response:", response);
 
       if (response.success) {
-        console.log("Login successful, redirecting...");
+        console.log("✓ Login successful");
         if (this.loginForm) {
           this.loginForm.querySelectorAll("input, button").forEach((el) => {
             el.disabled = true;
@@ -63,20 +67,23 @@ class LoginPage {
 
         const token = response.token || this.authClient.getToken();
         if (!token) {
-          console.error("No token after login");
+          console.error("✗ No token after login");
           if (this.errorMessage) {
             this.errorMessage.style.display = "block";
-            this.errorMessage.textContent = "Login failed: No token received";
+            this.errorMessage.textContent = "Login failed: No token received. Check browser console.";
           }
           return;
         }
 
+        console.log("✓ Token obtained, fetching user info...");
+        
         try {
           const apiBase =
             (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
-          console.log("Fetching user info from:", `${apiBase}/api/user/me`);
+          const userMeUrl = `${apiBase}/api/user/me`;
+          console.log("Fetching from:", userMeUrl);
           
-          const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
+          const userInfoResponse = await fetch(userMeUrl, {
             method: "GET",
             headers: {
               Authorization: `Bearer ${token}`,
@@ -84,27 +91,31 @@ class LoginPage {
             },
           });
 
-          console.log("User info response status:", userInfoResponse.status);
+          console.log("User info response:", userInfoResponse.status, userInfoResponse.statusText);
           
           if (userInfoResponse.ok) {
             const userInfo = await userInfoResponse.json();
+            console.log("✓ User info retrieved:", userInfo);
+            
             this.authClient.setAuthData({
               token: token,
               user: userInfo,
             });
-            console.log("User info stored:", userInfo);
 
             // Redirect based on role
             if (userInfo.roles && userInfo.roles.includes("Admin")) {
+              console.log("→ Redirecting to admin.html");
               window.location.href = "./admin.html";
             } else {
+              console.log("→ Redirecting to index.html");
               window.location.href = "./index.html";
             }
           } else {
-            // User info endpoint failed, but login succeeded - try fallback redirect
-            console.warn("Failed to fetch user info, using fallback redirect");
+            const errorText = await userInfoResponse.text();
+            console.warn("✗ Failed to fetch user info:", userInfoResponse.status, errorText);
+            console.log("→ Using fallback redirect based on email");
             
-            // Guess role based on email or just redirect to main page
+            // Fallback redirect based on email
             if (email === "admin@admin.com") {
               window.location.href = "./admin.html";
             } else {
@@ -112,23 +123,22 @@ class LoginPage {
             }
           }
         } catch (error) {
-          console.error("Error fetching user info:", error);
-          // Even if user info fails, login succeeded - redirect to main page
-          console.log("Redirecting despite user info error");
+          console.error("✗ Error fetching user info:", error);
+          console.log("→ Proceeding with fallback redirect");
           window.location.href = "./index.html";
         }
       } else {
-        console.log("Login failed:", response.message);
+        console.log("✗ Login failed:", response.message);
         if (this.errorMessage) {
           this.errorMessage.style.display = "block";
           this.errorMessage.textContent = response.message || "Invalid email or password";
         }
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("✗ Login exception:", error);
       if (this.errorMessage) {
         this.errorMessage.style.display = "block";
-        this.errorMessage.textContent = "An error occurred. Please try again. Check console for details.";
+        this.errorMessage.textContent = "An error occurred. Check browser console for details.";
       }
     }
   }
