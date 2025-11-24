@@ -196,24 +196,43 @@ class AuthClient {
    * @param {string} password
    */
   async login(email, password) {
-    const res = await fetch(this.baseUrl + "/login", {
-      // Identity API Bearer token endpoint
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) return { success: false, message: data?.message || "Login failed" };
+    console.log("Login attempt for:", email);
+    console.log("Base URL:", this.baseUrl);
+    
+    try {
+      const res = await fetch(this.baseUrl + "/login", {
+        // Identity API Bearer token endpoint
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      console.log("Login response status:", res.status);
+      const data = await res.json();
+      console.log("Login response data:", data);
+      
+      if (!res.ok) {
+        const message = data?.message || "Login failed";
+        console.warn("Login failed with status", res.status, ":", message);
+        return { success: false, message };
+      }
 
-    // Extract Bearer token from response
-    const token = data.accessToken || data.token;
-    if (token) {
-      console.log("Token received, storing auth data");
-      this.setAuthData({ token, user: { email } });
-      return { success: true, token, user: { email } };
-    } else {
-      console.warn("No token in login response:", data);
-      return { success: false, message: "No token received" };
+      // Extract Bearer token from response
+      const token = data.accessToken || data.token;
+      console.log("Token extracted:", token ? "✓" : "✗");
+      
+      if (token) {
+        console.log("Token received, storing auth data");
+        this.setAuthData({ token, user: { email } });
+        console.log("Auth data stored successfully");
+        return { success: true, token, user: { email } };
+      } else {
+        console.warn("No token in login response:", data);
+        return { success: false, message: "No token received" };
+      }
+    } catch (error) {
+      console.error("Login exception:", error);
+      return { success: false, message: error.message || "Network error" };
     }
   }
 

@@ -61,48 +61,62 @@ class LoginPage {
           });
         }
 
+        const token = response.token || this.authClient.getToken();
+        if (!token) {
+          console.error("No token after login");
+          if (this.errorMessage) {
+            this.errorMessage.style.display = "block";
+            this.errorMessage.textContent = "Login failed: No token received";
+          }
+          return;
+        }
+
         try {
-          const token = response.token || this.authClient.getToken();
-          if (token) {
-            const apiBase =
-              (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
-            const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
+          const apiBase =
+            (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
+          console.log("Fetching user info from:", `${apiBase}/api/user/me`);
+          
+          const userInfoResponse = await fetch(`${apiBase}/api/user/me`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          console.log("User info response status:", userInfoResponse.status);
+          
+          if (userInfoResponse.ok) {
+            const userInfo = await userInfoResponse.json();
+            this.authClient.setAuthData({
+              token: token,
+              user: userInfo,
             });
+            console.log("User info stored:", userInfo);
 
-            if (userInfoResponse.ok) {
-              const userInfo = await userInfoResponse.json();
-              this.authClient.setAuthData({
-                token: token || this.authClient.getToken(),
-                user: userInfo,
-              });
-              console.log("User info stored:", userInfo);
-
-              if (userInfo.roles && userInfo.roles.includes("Admin")) {
-                window.location.href = "./admin.html";
-                return;
-              } else {
-                window.location.href = "./index.html";
-                return;
-              }
+            // Redirect based on role
+            if (userInfo.roles && userInfo.roles.includes("Admin")) {
+              window.location.href = "./admin.html";
+            } else {
+              window.location.href = "./index.html";
+            }
+          } else {
+            // User info endpoint failed, but login succeeded - try fallback redirect
+            console.warn("Failed to fetch user info, using fallback redirect");
+            
+            // Guess role based on email or just redirect to main page
+            if (email === "admin@admin.com") {
+              window.location.href = "./admin.html";
+            } else {
+              window.location.href = "./index.html";
             }
           }
         } catch (error) {
           console.error("Error fetching user info:", error);
+          // Even if user info fails, login succeeded - redirect to main page
+          console.log("Redirecting despite user info error");
+          window.location.href = "./index.html";
         }
-
-        // Fallback redirect
-        // setTimeout(() => {
-        //   if (email === "admin@admin.com" || email === "aa@aa.aa" || email === "john@john.com") {
-        //     window.location.href = "./admin.html";
-        //   } else {
-        //     window.location.href = "./index.html#/chat";
-        //   }
-        // }, 100);
       } else {
         console.log("Login failed:", response.message);
         if (this.errorMessage) {
@@ -114,7 +128,7 @@ class LoginPage {
       console.error("Login error:", error);
       if (this.errorMessage) {
         this.errorMessage.style.display = "block";
-        this.errorMessage.textContent = "An error occurred. Please try again.";
+        this.errorMessage.textContent = "An error occurred. Please try again. Check console for details.";
       }
     }
   }
