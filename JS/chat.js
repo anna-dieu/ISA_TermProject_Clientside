@@ -44,8 +44,8 @@ async function loadUsers() {
     const currentUserName = me?.userName || me?.username || me?.email;
 
     // Populate other users
-    users.forEach((u) => {
-      if (currentUserName && u.userName === currentUserName) return;
+    for (const u of users) {
+      if (currentUserName && u.userName === currentUserName) continue;
 
       const li = document.createElement("li");
       li.className = "user-item";
@@ -64,10 +64,35 @@ async function loadUsers() {
       nameDiv.className = "user-name";
       nameDiv.textContent = u.userName;
       
-      // Chat preview (last message)
+      // Chat preview (last message) - fetch it
       const previewDiv = document.createElement("div");
       previewDiv.className = "user-preview";
       previewDiv.textContent = "No messages yet";
+      
+      // Fetch last message for this user
+      try {
+        const msgRes = await fetch(`${apiBase}/api/message/${u.id}`, {
+          headers: token
+            ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+            : { "Content-Type": "application/json" },
+        });
+        
+        if (msgRes.ok) {
+          const messages = await msgRes.json();
+          if (Array.isArray(messages) && messages.length > 0) {
+            // Get the most recent message
+            const lastMsg = messages[messages.length - 1];
+            let preview = lastMsg.text || lastMsg.content || "No messages yet";
+            // Truncate if too long
+            if (preview.length > 50) {
+              preview = preview.substring(0, 50) + "...";
+            }
+            previewDiv.textContent = preview;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch messages for user:", u.userName, err);
+      }
       
       infoDiv.appendChild(nameDiv);
       infoDiv.appendChild(previewDiv);
@@ -83,7 +108,7 @@ async function loadUsers() {
       
       li.addEventListener("click", () => openChat(u));
       list.appendChild(li);
-    });
+    }
 
   } catch (err) {
     console.error("Failed to load users:", err);
