@@ -227,24 +227,65 @@ class AuthClient {
   async signup(userData) {
     console.log("Signup attempt:", userData);
 
-    const endpoint = "/register"; // ASP.NET Identity registration endpoint
-    const body = JSON.stringify(userData);
-    const headers = { "Content-Type": "application/json" };
+    try {
+      const res = await fetch(this.baseUrl + "/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
 
-    const res = await this._fetchRaw(endpoint, { method: "POST", headers, body });
-    if (!res || !res.ok) {
-      console.warn("Signup failed:", res);
-      return { success: false, message: "Registration failed" };
+      console.log("Signup raw response - Status:", res.status, "OK:", res.ok);
+
+      let data = null;
+      const contentType = res.headers.get("content-type");
+
+      // Only try to parse JSON if the response has content
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch (e) {
+          console.error("Failed to parse signup JSON response:", e);
+        }
+      } else {
+        // Non-JSON response (maybe empty 200 OK)
+        const text = await res.text();
+        console.log("Signup non-JSON response:", text);
+      }
+
+      console.log("Signup response - Status:", res.status, "OK:", res.ok, "Data:", data);
+
+      if (!res.ok) {
+        const errorMsg =
+          data?.message ||
+          data?.title ||
+          data?.errors ||
+          `Registration failed with status ${res.status}`;
+        console.error("Signup failed:", errorMsg);
+        return { success: false, message: errorMsg };
+      }
+
+      // Registration successful (200 OK) - now auto-login
+      console.log("Registration successful, attempting auto-login...");
+      const loginResult = await this.login(userData.email, userData.password);
+
+      if (loginResult.success) {
+        console.log("Auto-login successful");
+        return { success: true, token: loginResult.token };
+      } else {
+        console.warn("Auto-login failed:", loginResult.message);
+        return {
+          success: true,
+          message: "Account created! Please log in.",
+          requiresLogin: true,
+        };
+      }
+    } catch (error) {
+      console.error("Signup network error:", error);
+      return {
+        success: false,
+        message: "Network error: " + error.message + ". Is the backend server running?",
+      };
     }
-
-    const token = this._extractTokenFromResponse(res.data);
-    if (token) {
-      // Auto-login after successful signup
-      this.setAuthData({ token });
-      return { success: true, token };
-    }
-
-    return { success: false, message: "Signup successful, but failed to retrieve token" };
   }
 
   // -------------------------------------------------------------------

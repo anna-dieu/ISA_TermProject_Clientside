@@ -1,81 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="CSS/styles.css" />
+    <link rel="stylesheet" href="CSS/chat.css" />
+    <title>Chat Window</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="CSS/styles.css" />
-  <link rel="stylesheet" href="CSS/chat.css" />
-  <title>Chat Window</title>
-</head>
+  <body>
+    <!-- Navbar -->
+    <div id="navbar-container"></div>
 
-<body>
-  <!-- Navbar -->
-  <div id="navbar-container"></div>
-
-  <div id="chatContainer" class="chat-wrapper">
-
-    <!-- SIDEBAR - USER LIST -->
-    <div id="sidebar" class="sidebar">
-      <h3 class="sidebar-title">Available Users</h3>
-      <ul id="userList" class="user-list"></ul>
-    </div>
-
-    <!-- MAIN CHAT AREA -->
-    <div id="chatArea" class="chat-area hidden">
-      <div class="chat-header">
-        <h2 id="chatTitle">Select a user to chat</h2>
+    <div id="chatContainer" class="chat-wrapper">
+      <!-- SIDEBAR - USER LIST -->
+      <div id="sidebar" class="sidebar">
+        <h3 class="sidebar-title">Available Users</h3>
+        <ul id="userList" class="user-list"></ul>
       </div>
 
-      <!-- Messages Container -->
-      <div class="messages-container">
-        <ul id="messagesList" class="chat-list"></ul>
+      <!-- MAIN CHAT AREA -->
+      <div id="chatArea" class="chat-area hidden">
+        <div class="chat-header">
+          <h2 id="chatTitle">Select a user to chat</h2>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="messages-container">
+          <ul id="messagesList" class="chat-list"></ul>
+        </div>
+
+        <!-- UNIFIED COMPOSER (BOTTOM) -->
+        <section class="composer-section">
+          <div id="chatMessageForm" class="message-form">
+            <div class="composer-controls">
+              <select id="toneSelect" name="tone" class="tone-select">
+                <option value="professional" selected>Professional</option>
+                <option value="educational">Educational</option>
+                <option value="romantic">Romantic</option>
+              </select>
+
+              <input
+                id="messageInput"
+                type="text"
+                class="message-input"
+                placeholder="Type a message..."
+              />
+            </div>
+
+            <div class="composer-actions">
+              <button id="mcpBtn" type="button" class="btn btn-secondary">Message MCP</button>
+              <button id="polishBtn" type="button" class="btn btn-secondary">Polish</button>
+              <button id="sendButton" type="button" class="btn btn-primary">Send</button>
+            </div>
+          </div>
+
+          <!-- AI Response Section (BELOW COMPOSER CONTROLS) -->
+          <div id="aiResponseArea" class="ai-response-section hidden">
+            <div class="ai-response-header">AI Suggestion</div>
+            <textarea id="aiResponse" class="ai-response-textarea" readonly></textarea>
+            <div class="ai-actions">
+              <button id="sendAiBtn" class="btn btn-primary">Send AI Response</button>
+              <button id="discardAiBtn" class="btn btn-secondary">Discard</button>
+            </div>
+          </div>
+        </section>
       </div>
-
-      <!-- UNIFIED COMPOSER (BOTTOM) -->
-      <section class="composer-section">
-        <div id="chatMessageForm" class="message-form">
-          <div class="composer-controls">
-            <select id="toneSelect" name="tone" class="tone-select">
-              <option value="professional" selected>Professional</option>
-              <option value="educational">Educational</option>
-              <option value="romantic">Romantic</option>
-            </select>
-
-            <input id="messageInput" type="text" class="message-input" placeholder="Type a message..." />
-          </div>
-
-          <div class="composer-actions">
-            <button id="mcpBtn" type="button" class="btn btn-secondary">Message MCP</button>
-            <button id="polishBtn" type="button" class="btn btn-secondary">Polish</button>
-            <button id="sendButton" type="button" class="btn btn-primary">Send</button>
-          </div>
-        </div>
-
-        <!-- AI Response Section (BELOW COMPOSER CONTROLS) -->
-        <div id="aiResponseArea" class="ai-response-section hidden">
-          <div class="ai-response-header">AI Suggestion</div>
-          <textarea id="aiResponse" class="ai-response-textarea" readonly></textarea>
-          <div class="ai-actions">
-            <button id="sendAiBtn" class="btn btn-primary">Send AI Response</button>
-            <button id="discardAiBtn" class="btn btn-secondary">Discard</button>
-          </div>
-        </div>
-      </section>
     </div>
-  </div>
 
-  <!-- JS -->
-  <script src="JS/config.js"></script>
-  <script src="JS/auth-client.js"></script>
-  <script src="JS/api-client.js"></script>
-  <script src="JS/navbar-loader.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-  <script src="JS/chat.js"></script>
+    <!-- JS -->
+    <script src="JS/config.js"></script>
+    <script src="JS/auth-client.js"></script>
+    <script src="JS/api-client.js"></script>
+    <script src="JS/navbar-loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="JS/chat.js"></script>
 
-  <!-- AI / MCP -->
-  <script src="./JS/app.js"></script>
-  <script src="./JS/index.js"></script>
-</body>
-
+    <!-- AI / MCP -->
+    <script src="./JS/app.js"></script>
+    <script src="./JS/index.js"></script>
+  </body>
 </html>

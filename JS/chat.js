@@ -3,9 +3,7 @@
 /* ============================================================
    CONFIG
 ============================================================ */
-const apiBase =
-  (window.APP_CONFIG && window.APP_CONFIG.API_BASE) ||
-  "http://localhost:5157";
+const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
 
 const API_BASE_URL = apiBase;
 
@@ -18,10 +16,7 @@ let selectedUserId = null;
    LOAD USER LIST
 ============================================================ */
 async function loadUsers() {
-  const token =
-    (window.authClient?.getToken?.()) ||
-    localStorage.getItem("auth_token") ||
-    null;
+  const token = window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null;
 
   try {
     const res = await fetch(`${apiBase}/api/User`, {
@@ -50,41 +45,40 @@ async function loadUsers() {
       const li = document.createElement("li");
       li.className = "user-item";
       li.dataset.id = u.id;
-      
+
       // Create status indicator
       const statusDiv = document.createElement("div");
       statusDiv.className = "user-status online"; // Always show online for now
-      
+
       // Create user info container
       const infoDiv = document.createElement("div");
       infoDiv.className = "user-info";
-      
+
       // User name
       const nameDiv = document.createElement("div");
       nameDiv.className = "user-name";
       nameDiv.textContent = u.userName;
-      
+
       // Chat preview (last message)
       const previewDiv = document.createElement("div");
       previewDiv.className = "user-preview";
       previewDiv.textContent = "No messages yet";
-      
+
       infoDiv.appendChild(nameDiv);
       infoDiv.appendChild(previewDiv);
-      
+
       // Create timestamp
       const timeDiv = document.createElement("div");
       timeDiv.className = "user-time";
       timeDiv.textContent = ""; // Empty for now
-      
+
       li.appendChild(statusDiv);
       li.appendChild(infoDiv);
       li.appendChild(timeDiv);
-      
+
       li.addEventListener("click", () => openChat(u));
       list.appendChild(li);
     });
-
   } catch (err) {
     console.error("Failed to load users:", err);
   }
@@ -106,7 +100,6 @@ function openChat(user) {
   const mcpBtn = document.getElementById("mcpBtn");
   const sendPolishedBtn = document.getElementById("sendPolishedBtn");
 
-
   chatArea.classList.remove("hidden");
   chatTitle.textContent = `Chat with ${user.userName}`;
 
@@ -123,9 +116,7 @@ function openChat(user) {
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(`${apiBase}/chatHub`, {
     accessTokenFactory: () =>
-      window.authClient?.getToken?.() ||
-      localStorage.getItem("auth_token") ||
-      null,
+      window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null,
   })
   .withAutomaticReconnect()
   .build();
@@ -182,16 +173,15 @@ async function loadCurrentUser() {
   }
 }
 
-loadCurrentUser()
-  .then(() =>
-    connection
-      .start()
-      .then(() => {
-        console.log("Connected to SignalR hub");
-        document.getElementById("sendButton").disabled = false;
-      })
-      .catch((err) => console.error("SignalR connection failed:", err))
-  );
+loadCurrentUser().then(() =>
+  connection
+    .start()
+    .then(() => {
+      console.log("Connected to SignalR hub");
+      document.getElementById("sendButton").disabled = false;
+    })
+    .catch((err) => console.error("SignalR connection failed:", err))
+);
 
 /* ============================================================
    SEND MESSAGE (BLUE SEND BUTTON)
@@ -212,10 +202,7 @@ document.getElementById("sendButton").addEventListener("click", () => {
    LOAD CONVERSATION HISTORY
 ============================================================ */
 async function loadConversation(receiverId) {
-  const token =
-    window.authClient?.getToken?.() ||
-    localStorage.getItem("auth_token") ||
-    null;
+  const token = window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null;
 
   const res = await fetch(`${apiBase}/api/message/${receiverId}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -248,7 +235,7 @@ async function loadConversation(receiverId) {
   });
 
   msgList.scrollTop = msgList.scrollHeight;
-};
+}
 
 /* ============================================================
    POLISH FEATURE (MCP Rewrite API)
@@ -265,15 +252,13 @@ const messageInputField = document.getElementById("messageInput");
 
 // API call wrapper
 async function polishMessage(text, tone) {
-  const token =
-    window.authClient?.getToken?.() ||
-    localStorage.getItem("auth_token");
+  const token = window.authClient?.getToken?.() || localStorage.getItem("auth_token");
 
   const response = await fetch(`${apiBase}/api/OpenAi/rewrite`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ userText: text, tone }),
   });
@@ -327,19 +312,18 @@ discardAiBtn.addEventListener("click", () => {
   aiResponse.value = "";
 });
 
-
 async function messageMcp(text) {
   const response = await fetch(`${apiBase}/Chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(text),   // Backend expects raw string in JSON
+    body: JSON.stringify(text), // Backend expects raw string in JSON
   });
 
   if (!response.ok) {
     throw new Error("MCP message failed");
   }
 
-  return await response.text();  // backend returns text/plain
+  return await response.text(); // backend returns text/plain
 }
 
 mcpBtn.addEventListener("click", async () => {
