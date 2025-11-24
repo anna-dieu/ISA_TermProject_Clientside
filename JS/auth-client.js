@@ -210,7 +210,7 @@ class AuthClient {
     if (token) {
       console.log("Token received, storing auth data");
       this.setAuthData({ token, user: { email } });
-      return { success: true, user: { email } };
+      return { success: true, token, user: { email } };
     } else {
       console.warn("No token in login response:", data);
       return { success: false, message: "No token received" };
