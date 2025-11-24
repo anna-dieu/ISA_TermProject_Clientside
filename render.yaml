@@ -1,0 +1,8 @@
+services:
+  - type: static
+    name: AIChatapp
+    staticPublishPath: ./
+    buildCommand: echo "No build needed"
+    routes:
+      - path: /
+        index: index.html
