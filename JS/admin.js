@@ -141,6 +141,12 @@ class AdminPage {
       if (adminContent) adminContent.style.display = "block";
       if (accessDenied) accessDenied.style.display = "none";
       await this.loadUsers();
+      // load request counts for admin dashboard
+      try {
+        await this.loadRequestCounts();
+      } catch (e) {
+        console.error("Failed to load request counts:", e);
+      }
     } else {
       if (adminContent) adminContent.style.display = "none";
       if (accessDenied) accessDenied.style.display = "block";
@@ -164,6 +170,47 @@ class AdminPage {
         `;
       }
     }
+  }
+
+  // Load aggregated request counts (Admin only)
+  async loadRequestCounts() {
+    const tbody = document.getElementById("requestCountsTableBody");
+    if (!tbody) return;
+    try {
+      if (!this.api || !this.api.getRequestCounts) throw new Error("API client not available");
+      const counts = await this.api.getRequestCounts();
+      this.renderRequestCounts(counts || []);
+    } catch (error) {
+      console.error("Error loading request counts:", error);
+      tbody.innerHTML = `<tr><td colspan="4" class="loading">Error loading request counts: ${this.escapeHtml(
+        error.message || String(error)
+      )}</td></tr>`;
+    }
+  }
+
+  renderRequestCounts(items) {
+    const tbody = document.getElementById("requestCountsTableBody");
+    if (!tbody) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="loading">No request records found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items
+      .map((it) => {
+        const last = it.lastRequestAt || it.LastRequestAt || "";
+        const lastText = last ? new Date(last).toUTCString() : "";
+        const userName = it.userName || it.UserName || "(unknown)";
+        return `
+          <tr>
+            <td>${this.escapeHtml(userName)}</td>
+            <td>${this.escapeHtml(it.endpoint || it.Endpoint || "(unknown)")}</td>
+            <td>${this.escapeHtml(String(it.count || it.Count || 0))}</td>
+            <td>${this.escapeHtml(lastText)}</td>
+          </tr>
+        `;
+      })
+      .join("");
   }
 
   // Load users via API client and render

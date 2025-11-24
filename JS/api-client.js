@@ -76,9 +76,61 @@ class APIClient {
       headers,
       body: JSON.stringify({ userText, tone }),
     });
+
+    // Check for usage warning header
+    const warningHeader = res.headers.get("X-Usage-Warning");
+    console.log(
+      "[api-client.rewriteText] All response headers:",
+      Array.from(res.headers.entries())
+    );
+    console.log("[api-client.rewriteText] X-Usage-Warning header:", warningHeader);
+    if (warningHeader) {
+      console.log("[api-client.rewriteText] Showing warning:", warningHeader);
+      this._showUsageWarning(warningHeader);
+    }
+
     if (!res.ok) throw new Error("Rewrite failed");
     const data = await res.json();
     return data.rewrittenText || "";
+  }
+
+  _showUsageWarning(message) {
+    // Create notification if it doesn't exist
+    let notification = document.getElementById("usageWarningNotification");
+    if (!notification) {
+      notification = document.createElement("div");
+      notification.id = "usageWarningNotification";
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ff9800;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        z-index: 10000;
+        max-width: 400px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      `;
+      document.body.appendChild(notification);
+    }
+
+    notification.innerHTML = `
+      <span>⚠️</span>
+      <span>${message}</span>
+      <button onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; color: white; cursor: pointer; font-size: 18px;">✕</button>
+    `;
+
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (notification && notification.parentElement) {
+        notification.remove();
+      }
+    }, 10000);
   }
 
   // Calls backend usage endpoint for OpenAI
@@ -136,6 +188,28 @@ class APIClient {
         throw new Error("Access denied - Admin role required");
       }
       throw new Error(errorData.message || `Failed to fetch users (${res.status})`);
+    }
+    return await res.json();
+  }
+
+  /**
+   * Get aggregated request counts (Admin only)
+   */
+  async getRequestCounts() {
+    const token = window.authClient?.getToken?.();
+    if (!token) throw new Error("Not authenticated");
+
+    const headers = { "Content-Type": "application/json" };
+    headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${this.base}/api/admin/AdminStats/requestcounts`, {
+      method: "GET",
+      headers,
+    });
+    if (!res.ok) {
+      if (res.status === 401) throw new Error("Authentication failed - Please log in again");
+      if (res.status === 403) throw new Error("Access denied - Admin role required");
+      throw new Error("Failed to fetch request counts");
     }
     return await res.json();
   }

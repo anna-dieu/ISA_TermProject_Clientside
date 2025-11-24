@@ -20,6 +20,29 @@
 
         <div id="messageArea"></div>
 
+        <!-- Request Counts (Admin) -->
+        <div id="requestCountsSection" class="request-counts" style="margin-top: 20px">
+          <h2>API Request Counts</h2>
+          <p class="muted">Shows how many times each user has called instrumented endpoints.</p>
+          <div class="request-counts-table">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Endpoint</th>
+                  <th>Count</th>
+                  <th>Last Request At (UTC)</th>
+                </tr>
+              </thead>
+              <tbody id="requestCountsTableBody">
+                <tr>
+                  <td colspan="4" class="loading">Loading request counts...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Create User Form -->
         <div id="createUserForm" class="create-user-form" style="display: none">
           <h2 style="margin-top: 0; margin-bottom: 20px; color: #052e46">Create New User</h2>
