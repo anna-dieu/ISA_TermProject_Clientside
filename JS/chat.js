@@ -145,8 +145,17 @@ function openChat(user) {
 /* ============================================================
    SIGNALR SETUP
 ============================================================ */
+// const connection = new signalR.HubConnectionBuilder()
+//   .withUrl(`${apiBase}/chatHub`, {
+//     accessTokenFactory: () =>
+//       window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null,
+//   })
+//   .withAutomaticReconnect()
+//   .build();
+
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(`${apiBase}/chatHub`, {
+    transport: signalR.HttpTransportType.LongPolling,
     accessTokenFactory: () =>
       window.authClient?.getToken?.() ||
       localStorage.getItem("auth_token") ||
@@ -154,6 +163,7 @@ const connection = new signalR.HubConnectionBuilder()
   })
   .withAutomaticReconnect()
   .build();
+
 
 /* ============================================================
    RECEIVE PRIVATE MESSAGE
