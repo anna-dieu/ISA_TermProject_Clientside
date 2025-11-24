@@ -283,6 +283,7 @@ const aiResponse = document.getElementById("aiResponse");
 const sendAiBtn = document.getElementById("sendAiBtn");
 const discardAiBtn = document.getElementById("discardAiBtn");
 const messageInputField = document.getElementById("messageInput");
+const mcpBtn = document.getElementById("mcpBtn");
 
 // API call wrapper
 async function polishMessage(text, tone) {
@@ -357,21 +358,37 @@ discardAiBtn.addEventListener("click", () => {
 
 async function messageMcp(text) {
   const token = window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null;
+  console.log("[messageMcp] token:", token);
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  console.log("[messageMcp] request headers:", headers);
 
   const response = await fetch(`${apiBase}/Chat`, {
     method: "POST",
     headers,
     body: JSON.stringify(text), // Backend expects raw string in JSON
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(text),   // Backend expects raw string in JSON
   });
 
   // Check for usage warning header
   const warningHeader = response.headers.get("X-Usage-Warning");
   console.log("[messageMcp] All response headers:", Array.from(response.headers.entries()));
   console.log("[messageMcp] X-Usage-Warning header:", warningHeader);
+  console.log("[messageMcp] response status:", response.status);
+  if (response.status === 401) {
+    // Provide clearer feedback and suggest re-login
+    console.warn("[messageMcp] Unauthorized (401) from /Chat - prompting login");
+    try {
+      const errText = await response.text();
+      console.warn("[messageMcp] 401 body:", errText);
+    } catch (e) {
+      /* ignore */
+    }
+    alert("You are not authorized. Please log in to use the chat feature.");
+    // Optionally redirect to login page
+    // window.location.href = 'login.html';
+    // Stop further processing
+    throw new Error("Unauthorized");
+  }
   if (warningHeader) {
     console.log("[messageMcp] Showing warning:", warningHeader);
     showUsageWarning(warningHeader);
@@ -439,19 +456,25 @@ mcpBtn.addEventListener("click", async () => {
   }
 });
 
-sendPolishedBtn.addEventListener("click", () => {
-  const polishedText = aiResponse.value.trim();
+// Attach polished send handler only if the element exists (avoids ReferenceError)
+const _sendPolishedBtn = document.getElementById("sendPolishedBtn");
+if (_sendPolishedBtn) {
+  _sendPolishedBtn.addEventListener("click", () => {
+    const polishedText = aiResponse.value.trim();
 
-  if (!polishedText) return;
-  if (!selectedUserId) return alert("Select a user first.");
+    if (!polishedText) return;
+    if (!selectedUserId) return alert("Select a user first.");
 
-  // Send polished text to private chat
-  connection
-    .invoke("SendPrivateMessage", selectedUserId, polishedText)
-    .catch((err) => console.error("Polished Send failed:", err));
+    // Send polished text to private chat
+    connection
+      .invoke("SendPrivateMessage", selectedUserId, polishedText)
+      .catch((err) => console.error("Polished Send failed:", err));
 
-  // Hide AI area + clear
-  aiResponseArea.classList.add("hidden");
-  aiResponse.value = "";
-  messageInputField.value = "";
-});
+    // Hide AI area + clear
+    aiResponseArea.classList.add("hidden");
+    aiResponse.value = "";
+    messageInputField.value = "";
+  });
+} else {
+  console.warn("sendPolishedBtn not present in DOM; polished send disabled.");
+}

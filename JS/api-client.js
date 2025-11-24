@@ -71,6 +71,7 @@ class APIClient {
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
+    console.log("[api-client.rewriteText] request headers:", headers);
     const res = await fetch(`${this.base}/api/OpenAi/rewrite`, {
       method: "POST",
       headers,
@@ -87,6 +88,15 @@ class APIClient {
     if (warningHeader) {
       console.log("[api-client.rewriteText] Showing warning:", warningHeader);
       this._showUsageWarning(warningHeader);
+    }
+
+    if (res.status === 401) {
+      try {
+        const errText = await res.text();
+        console.warn("[api-client.rewriteText] 401 body:", errText);
+      } catch (e) {}
+      alert("You are not authorized. Please log in to use the rewrite feature.");
+      throw new Error("Unauthorized");
     }
 
     if (!res.ok) throw new Error("Rewrite failed");
