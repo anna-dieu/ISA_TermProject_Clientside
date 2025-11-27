@@ -1,4 +1,13 @@
+/**
+ * Page controller for the "Forgot Password" page.
+ * Handles form wiring, validation and invoking the auth client's
+ * password reset API.
+ */
 class ForgotPasswordPage {
+  /**
+   * Create a ForgotPasswordPage instance.
+   * @param {{sendPasswordReset:function(string):Promise<object>}} authClient - Client with `sendPasswordReset(email)` method that returns a { success, message } shape.
+   */
   constructor(authClient) {
     this.authClient = authClient;
     this.form = document.getElementById("forgotPasswordForm");
@@ -10,6 +19,11 @@ class ForgotPasswordPage {
     this._initialize();
   }
 
+  /**
+   * Wire up DOM references and attach the submit handler if the form exists.
+   * This is called automatically from the constructor.
+   * @private
+   */
   _initialize() {
     if (this.form) {
       this.submitBtn = this.form.querySelector('button[type="submit"]');
@@ -17,6 +31,12 @@ class ForgotPasswordPage {
     }
   }
 
+  /**
+   * Display a status message to the user.
+   * @param {string} message - The message text to display.
+   * @param {boolean} [isError=false] - When true, shows the message as an error.
+   * @private
+   */
   _showMessage(message, isError = false) {
     this.messageDiv.style.display = "none";
     this.errorDiv.style.display = "none";
@@ -30,6 +50,11 @@ class ForgotPasswordPage {
     }
   }
 
+  /**
+   * Toggle the submit button loading state.
+   * @param {boolean} isLoading - true to set the button into loading/disabled state.
+   * @private
+   */
   _setLoading(isLoading) {
     if (this.submitBtn) {
       this.submitBtn.disabled = isLoading;
@@ -37,6 +62,13 @@ class ForgotPasswordPage {
     }
   }
 
+  /**
+   * Handle the form submit event: validate input, call the auth client,
+   * and show success/error messages.
+   * @param {Event} e - Submit event from the form
+   * @returns {Promise<void>}
+   * @private
+   */
   async _handleSubmit(e) {
     e.preventDefault();
 

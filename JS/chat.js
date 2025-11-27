@@ -1,15 +1,18 @@
 "use strict";
 
-/* ============================================================
-   CONFIG & INITIALIZATION
-============================================================ */
+// CONFIG & INITIALIZATION
 const apiBase = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "http://localhost:5157";
 const API_BASE_URL = apiBase;
 
-/* ============================================================
-   CHAT CONTROLLER CLASS
-============================================================ */
+//  CHAT CONTROLLER CLASS
+/**
+ * ChatController handles chat UI, SignalR connection and API calls used
+ * by the chat pages. It centralizes event wiring and network interactions.
+ */
 class ChatController {
+  /**
+   * Create a ChatController instance and initialize functionality.
+   */
   constructor() {
     this.selectedUserId = null;
     this.currentUserId = null;
@@ -21,7 +24,10 @@ class ChatController {
     this.loadCurrentUser();
   }
 
-  // Initialize SignalR connection
+  /**
+   * Initialize the SignalR connection and register incoming message handlers.
+   * Uses the token from `authClient` (or legacy localStorage) as access token.
+   */
   initConnection() {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(`${apiBase}/chatHub`, {
@@ -37,12 +43,19 @@ class ChatController {
     );
   }
 
-  // Get auth token with fallbacks
+  /**
+   * Retrieve the stored authentication token.
+   * @returns {string|null} JWT bearer token or null when not available.
+   */
   getToken() {
     return window.authClient?.getToken?.() || localStorage.getItem("auth_token") || null;
   }
 
-  // Load users list from API
+  /**
+   * Load the list of users from the backend and populate the user list UI.
+   * Skips the currently logged-in user when rendering the list.
+   * @returns {Promise<void>}
+   */
   async loadUsers() {
     const token = this.getToken();
 
@@ -137,7 +150,10 @@ class ChatController {
     }
   }
 
-  // Open chat with selected user
+  /**
+   * Open a private chat with a selected user.
+   * @param {{id:string,userName:string}} user - user object selected from the list
+   */
   openChat(user) {
     this.selectedUserId = user.id;
 
@@ -155,7 +171,11 @@ class ChatController {
     document.getElementById("sendButton").disabled = false;
   }
 
-  // Load current user info
+  /**
+   * Load current authenticated user information and start the SignalR connection.
+   * Stores the current user id/name in `window` for compatibility with other scripts.
+   * @returns {Promise<void>}
+   */
   async loadCurrentUser() {
     let me = window.authClient?.getUser?.();
 
@@ -185,13 +205,22 @@ class ChatController {
     }
   }
 
-  // Receive private message via SignalR
+  /**
+   * Handler for receiving a private message from SignalR.
+   * Renders the incoming message into the messages list.
+   * @param {string} fromUserName - Display name of the sender
+   * @param {string} message - Message text
+   * @param {string|null} fromUserId - Sender user id (may be null)
+   */
   onReceivePrivateMessage(fromUserName, message, fromUserId) {
     const msgList = document.getElementById("messagesList");
     const li = document.createElement("li");
     li.classList.add("message");
 
-    const isMine = fromUserId != null ? fromUserId === this.currentUserId : fromUserName === this.currentUserName;
+    const isMine =
+      fromUserId != null
+        ? fromUserId === this.currentUserId
+        : fromUserName === this.currentUserName;
     li.classList.add(isMine ? "sent" : "received");
 
     if (!isMine) {
@@ -210,7 +239,11 @@ class ChatController {
     msgList.scrollTop = msgList.scrollHeight;
   }
 
-  // Load conversation history
+  /**
+   * Load conversation history for the selected receiver from the backend.
+   * @param {string} receiverId - The id of the user to load conversation with
+   * @returns {Promise<void>}
+   */
   async loadConversation(receiverId) {
     const token = this.getToken();
 
@@ -247,7 +280,13 @@ class ChatController {
     msgList.scrollTop = msgList.scrollHeight;
   }
 
-  // Polish message via API
+  /**
+   * Send text to the rewrite API and return the rewritten text.
+   * Also checks for the `X-Usage-Warning` header and shows a notification if present.
+   * @param {string} text - The message text to be rewritten
+   * @param {string} tone - Desired tone (e.g. 'professional')
+   * @returns {Promise<string>} rewritten text
+   */
   async polishMessage(text, tone) {
     const token = this.getToken();
 
@@ -278,7 +317,10 @@ class ChatController {
     return data.rewrittenText;
   }
 
-  // Send message via SignalR
+  /**
+   * Send a private message to the currently selected user via SignalR.
+   * @param {string} text - The message text to send
+   */
   sendMessage(text) {
     if (!this.selectedUserId) {
       alert("Select a user first");
@@ -291,7 +333,12 @@ class ChatController {
       .catch((err) => console.error("Send failed:", err));
   }
 
-  // Contact MCP Chat endpoint
+  /**
+   * Send a raw text message to the MCP Chat endpoint (server-side chat model)
+   * and return the textual reply. Adds Authorization header when token exists.
+   * @param {string} text - Raw text to send to MCP Chat
+   * @returns {Promise<string>} reply text from the MCP service
+   */
   async messageMcp(text) {
     const token = this.getToken();
     console.log("[messageMcp] token:", token);
@@ -310,7 +357,7 @@ class ChatController {
     console.log("[messageMcp] All response headers:", Array.from(response.headers.entries()));
     console.log("[messageMcp] X-Usage-Warning header:", warningHeader);
     console.log("[messageMcp] response status:", response.status);
-    
+
     if (response.status === 401) {
       console.warn("[messageMcp] Unauthorized (401) from /Chat - prompting login");
       try {
@@ -322,7 +369,7 @@ class ChatController {
       alert("You are not authorized. Please log in to use the chat feature.");
       throw new Error("Unauthorized");
     }
-    
+
     if (warningHeader) {
       console.log("[messageMcp] Showing warning:", warningHeader);
       this.showUsageWarning(warningHeader);
@@ -335,7 +382,10 @@ class ChatController {
     return await response.text(); // backend returns text/plain
   }
 
-  // Show usage warning notification
+  /**
+   * Show a temporary usage warning notification in the UI.
+   * @param {string} message - The message to display in the notification
+   */
   showUsageWarning(message) {
     let notification = document.getElementById("usageWarningNotification");
     if (!notification) {
@@ -374,7 +424,11 @@ class ChatController {
     }, 10000);
   }
 
-  // Setup event listeners for UI elements
+  /**
+   * Wire up DOM event listeners for chat UI controls (polish, send, MCP, etc.).
+   * This method is safe to call multiple times; it checks elements exist before
+   * attaching event handlers.
+   */
   setupEventListeners() {
     const polishBtn = document.getElementById("polishBtn");
     const toneSelect = document.getElementById("toneSelect");
@@ -487,4 +541,3 @@ let chatController;
 document.addEventListener("DOMContentLoaded", () => {
   chatController = new ChatController();
 });
-

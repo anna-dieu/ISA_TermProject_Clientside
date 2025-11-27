@@ -1,4 +1,12 @@
+/**
+ * Controller for the reset password page.
+ * Responsible for extracting the token from the URL, validating user input,
+ * and calling the backend reset endpoint.
+ */
 class ResetPasswordPage {
+  /**
+   * Construct the page controller and wire up initial state.
+   */
   constructor() {
     this.form = document.getElementById("resetPasswordForm");
     this.messageDiv = document.getElementById("message");
@@ -13,6 +21,12 @@ class ResetPasswordPage {
     this._initialize();
   }
 
+  /**
+   * Extract `userId` and `token` from the URL. First attempts the URI hash
+   * (recommended: Gmail-friendly links), then falls back to query string
+   * parameters for backward compatibility.
+   * @private
+   */
   _extractTokenFromUrl() {
     // Get userId and token from URL hash (after #) since Gmail strips query parameters
     if (window.location.hash) {
@@ -35,6 +49,11 @@ class ResetPasswordPage {
     console.log("token:", this.token ? `${this.token.substring(0, 20)}...` : "null");
   }
 
+  /**
+   * Initialize the form handlers and validate that the token data exists.
+   * If the token is missing the form will be hidden and an error message shown.
+   * @private
+   */
   _initialize() {
     if (!this.userId || !this.token) {
       this._showMessage("Invalid reset link. Please request a new password reset.", true);
@@ -49,6 +68,13 @@ class ResetPasswordPage {
     }
   }
 
+  /**
+   * Display a status message to the user. When `isError` is true the
+   * message is rendered in the error container.
+   * @param {string} message - Text to display
+   * @param {boolean} [isError=false] - Whether this message is an error
+   * @private
+   */
   _showMessage(message, isError = false) {
     if (this.messageDiv) {
       this.messageDiv.style.display = "none";
@@ -70,6 +96,11 @@ class ResetPasswordPage {
     }
   }
 
+  /**
+   * Validate the password inputs locally (matching and minimal length).
+   * @returns {boolean} true when validation passes, otherwise false
+   * @private
+   */
   _validatePasswords() {
     const password = this.passwordInput.value;
     const confirmPassword = this.confirmPasswordInput.value;
@@ -87,6 +118,13 @@ class ResetPasswordPage {
     return true;
   }
 
+  /**
+   * POST the new password to the API using the extracted `userId` and `token`.
+   * Shows success or error messages depending on the response.
+   * @param {Event} e - Submit event
+   * @returns {Promise<void>}
+   * @private
+   */
   async _handleSubmit(e) {
     e.preventDefault();
 
