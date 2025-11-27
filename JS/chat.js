@@ -38,6 +38,26 @@ class ChatController {
       .withAutomaticReconnect()
       .build();
 
+    // reconnect / close handlers for better UX and diagnostics
+    this.connection.onreconnecting((error) => {
+      console.warn("[SignalR] reconnecting", error);
+      // disable send UI while reconnecting
+      const sendBtn = document.getElementById("sendButton");
+      if (sendBtn) sendBtn.disabled = true;
+    });
+
+    this.connection.onreconnected((connectionId) => {
+      console.log("[SignalR] reconnected. connectionId=", connectionId);
+      const sendBtn = document.getElementById("sendButton");
+      if (sendBtn) sendBtn.disabled = false;
+    });
+
+    this.connection.onclose((error) => {
+      console.warn("[SignalR] connection closed", error);
+      const sendBtn = document.getElementById("sendButton");
+      if (sendBtn) sendBtn.disabled = true;
+    });
+
     this.connection.on("ReceivePrivateMessage", (fromUserName, message, fromUserId) =>
       this.onReceivePrivateMessage(fromUserName, message, fromUserId)
     );
@@ -321,16 +341,41 @@ class ChatController {
    * Send a private message to the currently selected user via SignalR.
    * @param {string} text - The message text to send
    */
-  sendMessage(text) {
+  async sendMessage(text) {
     if (!this.selectedUserId) {
       alert("Select a user first");
       return;
     }
-    if (!text.trim()) return;
+    if (!text || !text.trim()) return;
 
-    this.connection
-      .invoke("SendPrivateMessage", this.selectedUserId, text)
-      .catch((err) => console.error("Send failed:", err));
+    const conn = this.connection;
+    if (!conn) {
+      console.warn("[sendMessage] No SignalR connection object");
+      alert("Not connected to chat server.");
+      return;
+    }
+
+    // If not connected, try to start/reconnect (safe-guard)
+    if (conn.state !== signalR.HubConnectionState.Connected) {
+      try {
+        console.warn(
+          `[sendMessage] Connection state is '${conn.state}', attempting to start/reconnect...`
+        );
+        await conn.start();
+        console.log("[sendMessage] SignalR connection started/reconnected.");
+      } catch (startErr) {
+        console.error("[sendMessage] Failed to start/reconnect SignalR:", startErr);
+        alert("Cannot send message: chat connection unavailable.");
+        return;
+      }
+    }
+
+    try {
+      await conn.invoke("SendPrivateMessage", this.selectedUserId, text);
+    } catch (err) {
+      console.error("Send failed:", err);
+      alert("Send failed. Check connection and try again.");
+    }
   }
 
   /**
